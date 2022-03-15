@@ -1,9 +1,9 @@
 Package: DungenessSonar
-Title: What the Package Does (One Line, Title Case)
+Title: Estimate Steelhead Escapement from SONAR
 Version: 0.0.0.9000
-Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Authors@R:
+    person("Kevin", "See", , "kevin.see@dfw.wa.gov", role = c("aut", "cre"))
+Description: Using SONAR data from the Dungeness River, estimates the abundance of steelhead passing that point on the river, with uncertainty.
 License: MIT + file LICENSE
 ByteCompile: true
 Encoding: UTF-8
@@ -12,3 +12,7 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.2
 URL: https://github.com/KevinSee/DungenessSonar
 BugReports: https://github.com/KevinSee/DungenessSonar/issues
+Imports: bookdown,
+    here
+Suggests: devtools,
+    git2r
