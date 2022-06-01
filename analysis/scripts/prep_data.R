@@ -124,19 +124,35 @@ spp_comp <- read_csv(here("analysis/data/raw_data",
 # species comp by length
 spp_fl <- readxl::read_excel(here("analysis/data/raw_data",
                                   "Species Comp ALL.xlsx"),
-                             "2021",
-                             range = "S3:U38") %>%
-  mutate(across(everything(),
-                ~ if_else(. > 100,
-                          . / 10, .))) %>%
-  pivot_longer(everything(),
-               names_to = "spp",
-               values_to = "fork_length",
-               values_drop_na = T) %>%
+                             "2021 lengths") %>%
+  clean_names() %>%
+  mutate(spp = recode(species,
+                      "Resident rainbow" = "Resident RB")) %>%
+  select(spp,
+         survey_date,
+         fork_length) %>%
   mutate(across(spp,
                 as_factor)) %>%
   mutate(fl_mean = mean(fork_length),
          fl_sd = sd(fork_length),
          fl_z = (fork_length - fl_mean) / fl_sd)
+
+# # older version
+# spp_fl <- readxl::read_excel(here("analysis/data/raw_data",
+#                                   "Species Comp ALL.xlsx"),
+#                              "2021",
+#                              range = "S3:U38") %>%
+#   mutate(across(everything(),
+#                 ~ if_else(. > 100,
+#                           . / 10, .))) %>%
+#   pivot_longer(everything(),
+#                names_to = "spp",
+#                values_to = "fork_length",
+#                values_drop_na = T) %>%
+#   mutate(across(spp,
+#                 as_factor)) %>%
+#   mutate(fl_mean = mean(fork_length),
+#          fl_sd = sd(fork_length),
+#          fl_z = (fork_length - fl_mean) / fl_sd)
 
 #-----------------------------------------------------------------
