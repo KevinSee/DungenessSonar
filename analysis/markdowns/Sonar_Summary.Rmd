@@ -73,6 +73,8 @@ library(here)
 library(magrittr)
 library(janitor)
 library(lubridate)
+library(splines)
+library(mgcv)
 library(ggfortify)
 library(ggpubr)
 library(scales)
@@ -153,7 +155,9 @@ sonar_raw <- read_csv(here("analysis/data/raw_data",
                 "Upstream" = "upstream")) %>%
   clean_names() %>%
   mutate(date_time = date + hour) %>%
-  arrange(date_time)
+  arrange(date_time) %>%
+  # drop any detections after June 1
+  filter(month(date) < 6)
 
 
 # pull out records of fish detections
@@ -216,17 +220,33 @@ spp_comp <- read_csv(here("analysis/data/raw_data",
                 mdy)) %>%
     select(date:sthd, notes)
 
+# # older version
+# spp_fl <- readxl::read_excel(here("analysis/data/raw_data",
+#                                   "Species Comp ALL.xlsx"),
+#                              "2021",
+#                              range = "S3:U38") %>%
+#   mutate(across(everything(),
+#                 ~ if_else(. > 100,
+#                           . / 10, .))) %>%
+#   pivot_longer(everything(),
+#                names_to = "spp",
+#                values_to = "fork_length",
+#                values_drop_na = T) %>%
+#   mutate(across(spp,
+#                 as_factor)) %>%
+#   mutate(fl_mean = mean(fork_length),
+#          fl_sd = sd(fork_length),
+#          fl_z = (fork_length - fl_mean) / fl_sd)
+
 spp_fl <- readxl::read_excel(here("analysis/data/raw_data",
                                   "Species Comp ALL.xlsx"),
-                             "2021",
-                             range = "S3:U38") %>%
-  mutate(across(everything(),
-                ~ if_else(. > 100,
-                          . / 10, .))) %>%
-  pivot_longer(everything(),
-               names_to = "spp",
-               values_to = "fork_length",
-               values_drop_na = T) %>%
+                             "2021 lengths") %>%
+  clean_names() %>%
+  mutate(spp = recode(species,
+                      "Resident rainbow" = "Resident RB")) %>%
+  select(spp,
+         survey_date,
+         fork_length) %>%
   mutate(across(spp,
                 as_factor)) %>%
   mutate(fl_mean = mean(fork_length),
@@ -569,13 +589,17 @@ fish_big <- per_fit_df %>%
 
 Bull trout are swimming past the sonar unit as well as steelhead, and we need to parse which fish identified by the sonar are steelhead, and exclude any bull trout. The largest bull trout sampled in any species composition data was 67 cm, so we are assuming any fish larger than 67 cm detected on the sonar is a steelhead. It then remains to filter the fish equal to or less than 67 cm long from the sonar and determine what proportion of those are steelhead, and what are bull trout. 
 
-We only have species composition data for one year, 2021. It was collected weekly, using tangle nets just upstream of the sonar location. For every fish caught, we know the date and fork length of that fish. 
+We only have species composition data for one year, 2021. It was collected weekly, using tangle nets just upstream of the sonar location. For every fish caught, we know the date and fork length of that fish. Based on this data, we have also determined that the steelhead run on the Dungeness is over by June 1. Therefore, we have only made predictions for fish detected prior to June 1st. 
 
 We have several options to model the probability of any particular fish, less than or equal to 67 cm, being a steelhead. we could model that probability as a factor of date (perhaps with a quadratic term to capture non-linearity), or as a factor of fork length, or both. If we use date, we can interpret the probability of being a steelhead as the proportion of all fish detected on that date that are steelhead. If we use fork length (or date and fork length), we can assign a probability to every fish detected by sonar, and assume that all fish with a probability greater than some threshold (probably 50%) are steelhead. 
 
-Currently, we are only using fork length, because although the date of capture is probably available, it is not in the current data set. From the species composition netting, there are `r nrow(spp_fl)` fish caught with fork lengths. These can be seen in Figure \@ref(fig:fl-hist). Since we only care about differentiating steelhead, we grouped resident rainbows with bull trout, and then fit a binomial GLM with a logit link, using the fork length to predict the probability of a fish being a steelhead. We did not restrict the dataset to fish with fork lengths less than 67 cm, because larger fish have information about the shape of the logistic curve. 
+<!-- Currently, we are only using fork length, because although the date of capture is probably available, it is not in the current data set. From the species composition netting, there are `r nrow(spp_fl)` fish caught with fork lengths. These can be seen in Figure \@ref(fig:fl-hist). Since we only care about differentiating steelhead, we grouped resident rainbows with bull trout, and then fit a binomial GLM with a logit link, using the fork length to predict the probability of a fish being a steelhead. We did not restrict the dataset to fish with fork lengths less than 67 cm, because larger fish have information about the shape of the logistic curve.  -->
 
-After fitting this GLM, we predicted the probability of being a steelhead for all fish observed on the sonar that were smaller than or equal to 67 cm, based on their length. Any fish with a probability of 50% or greater we assigned to be a steelhead. We then applied the same model (Section \@ref(expanding-30-min-to-60-min)) to expand 30 minute counts for small fish to full hour counts. We added counts or estimates of large fish to small fish for each time period to estimate total netsteelhead moving upstream for each time period. Estimates of large and small fish within the same time period were assumed to be independent when calculating the standard error.
+<!-- After fitting this GLM, we predicted the probability of being a steelhead for all fish observed on the sonar that were smaller than or equal to 67 cm, based on their length. Any fish with a probability of 50% or greater we assigned to be a steelhead. We then applied the same model (Section \@ref(expanding-30-min-to-60-min)) to expand 30 minute counts for small fish to full hour counts. We added counts or estimates of large fish to small fish for each time period to estimate total net steelhead moving upstream for each time period. Estimates of large and small fish within the same time period were assumed to be independent when calculating the standard error. -->
+
+We chose to use fork length and the Juilan day of capture. From the species composition netting, there are `r nrow(spp_fl)` fish to use in this model. These can be seen in Figures \@ref(fig:fl-hist) and \@ref(fig:fl-date). Since we only care about differentiating steelhead, we grouped resident rainbows with bull trout, and then fit a binomial GAM with a logit link, using splines of fork length and Julian day to predict the probability of a fish being a steelhead. We did not restrict the dataset to fish with fork lengths less than 67 cm, because larger fish have information about the shape of the logistic curve. 
+
+After fitting this GAM, we predicted the probability of being a steelhead for all fish observed on the sonar that were smaller than or equal to 67 cm, based on their length and Julian day of observation. Any fish with a probability of 50% or greater we assigned to be a steelhead. We then applied the same model (Section \@ref(expanding-30-min-to-60-min)) to expand 30 minute counts for small fish to full hour counts. We added counts or estimates of large fish to small fish for each time period to estimate total net steelhead moving upstream for each time period. Estimates of large and small fish within the same time period were assumed to be independent when calculating the standard error.
 
 ```{r fl-hist, fig.cap = "Histogram of forklengths, colored by species."}
 spp_fl %>%
@@ -588,8 +612,55 @@ spp_fl %>%
   labs(x = "Fork Length (cm)")
 ```
 
+```{r fl-date, fig.cap = "Scatterplot of date of capture and forklength, colored by species."}
+spp_fl %>%
+  ggplot(aes(x = survey_date,
+             y = fork_length,
+             color = spp)) +
+  geom_point() +
+  scale_color_brewer(palette = "Set1",
+                     name = "Species") +
+  labs(x = "Date",
+       y = "Fork Length (cm)")
+```
 
-```{r fl-glm}
+
+```{r fl-gam, eval = T}
+fl_mod <- spp_fl %>%
+  mutate(spp = recode(spp,
+                      "Resident RB" = "Bull Trout"),
+         across(spp,
+                fct_drop),
+         jday = yday(survey_date)) %>%
+  mutate(spp_fct = as.numeric(spp) - 1) %>%
+  gam(spp_fct ~ s(fl_z, k = 5, m = 2, bs = "tp") + 
+        s(jday, k = 5, m = 2, bs = "tp"),
+      data = .,
+      family = binomial)
+  # glm(spp_fct ~ fl_z + jday + I(jday^2),
+  #     data = .,
+  #     family = binomial)
+
+# what is the fork length when 50% of being a steelhead?
+p_pred = 0.5
+pred_tab <- crossing(length = seq(30, 80, by = 0.05),
+                     survey_date = seq(ymd(20210203),
+                                       ymd(20210601),
+                                       by = "1 days")) %>%
+  mutate(fl_z = (length - unique(spp_fl$fl_mean)) / unique(spp_fl$fl_sd),
+         jday = yday(survey_date)) %>%
+  bind_cols(predict(fl_mod,
+                    newdata = .,
+                    type = "response",
+                    se.fit = T) %>%
+              as_tibble() %>%
+              select(prob_sthd = fit,
+                     prob_se = se.fit))
+
+```
+
+
+```{r fl-glm, eval = F}
 fl_mod <- spp_fl %>%
   mutate(spp = recode(spp,
                       "Resident RB" = "Bull Trout"),
@@ -615,15 +686,21 @@ cut_pt <- boot::logit(p_pred) %>%
   multiply_by(unique(spp_fl$fl_sd)) %>%
   add(unique(spp_fl$fl_mean)) %>%
   as.numeric()
+```
 
+
+
+```{r pred-small-fish}
 # predict species of all fish <= 67 cm
 small_fish <- sonar_fish %>%
   filter(confidence == 1,
          !sthd_length) %>%
-  select(year:hour, time, direction,
+  select(year:hour, time, date_time,
+         direction,
          length,
          frame:range) %>%
   mutate(fl_z = (length - unique(spp_fl$fl_mean)) / unique(spp_fl$fl_sd)) %>%
+  mutate(jday = yday(date_time)) %>%
   bind_cols(predict(fl_mod,
                     newdata = .,
                     type = "response",
@@ -634,10 +711,6 @@ small_fish <- sonar_fish %>%
   mutate(p_alpha = prob_sthd^2 * ((1 - prob_sthd) / prob_se^2 - prob_sthd^-1),
          p_beta = p_alpha * (prob_sthd^-1 - 1))
 
-```
-
-
-```{r pred-small-fish}
 # filter out fish deemed not steelhead and
 # combine with some other information
 small_sthd <- small_fish %>%
@@ -1151,7 +1224,7 @@ We examined several forms of interpolation across the missing data, including a 
 
 The expansion factor (i.e. slope) changes depending on the temporal scale that data is summarized on. Figure \@ref(fig:period-comp-fig) shows the various regressions, comparing them with the 1-1 line and the expected slope of two. None of the temporal scales produced a slope of two, but the longer the temporal scale the closer it got to that expected value. 
 
-```{r period-comp-fig, fig.cap = "Scatter plots showing the net counts of fish moving upstream, using hours with both the first 30 minutes and second 30 minutes. The counts are summarized by hour, six hour blocks and entire day (24 hours) in the different facets. The dashed line is has a slope of 2 (expected value), the dotted line has a slope of 1, and the blue line is the linear regression fit to that data, with 95% confidence intervals."}
+```{r period-comp-fig, fig.cap = "Scatter plots showing the net counts of fish moving upstream, using hours with both the first 30 minutes and second 30 minutes. The counts are summarized by hour, six hour blocks and entire day (24 hours) in the different facets. The dashed red line is has a slope of 2 (expected value), the dotted grey line has a slope of 1, and the blue line is the linear regression fit to that data, with 95% confidence intervals."}
 per_fit_df %>%
   select(time_scale,
          model_df) %>%
@@ -1160,7 +1233,7 @@ per_fit_df %>%
              y = total)) +
   geom_abline(slope = 2,
               linetype = 2,
-              color = "gray30") +
+              color = "red") +
   geom_abline(slope = 1,
               linetype = 3,
               color = "gray30") +
@@ -1294,9 +1367,9 @@ cor_tab <- fish_cnts %>%
 
 ## Excluding Bull Trout
 
-Figure \@ref(fig:fig-glm) shows the fitted GLM that predicts the probability of being a steelhead based on a fish's length. Note that a 67 cm long fish would have a `r round(predict(fl_mod, newdata = tibble(fl_z = (67 - unique(spp_fl$fl_mean)) / unique(spp_fl$fl_sd)), type = "response"), 3) * 100`% of being a steelhead with this model.
+<!-- Figure \@ref(fig:fig-glm) shows the fitted GLM that predicts the probability of being a steelhead based on a fish's length. Note that a 67 cm long fish would have a  round(predict(fl_mod, newdata = tibble(fl_z = (67 - unique(spp_fl$fl_mean)) / unique(spp_fl$fl_sd)), type = "response"), 3) * 100% of being a steelhead with this model. -->
 
-```{r fig-glm, fig.cap = "Points show the fork length of steelhead (along the top) and non-steelhead (along the bottom), with the fitted binomial GLM in red. The dashed line shows where fish greater than that would have a greater than 50% probability of being a steelhead. The dotted line shows the 67 cm threshold for which fish we will be applying this model to."}
+```{r fig-glm, eval = F, fig.cap = "Points show the fork length of steelhead (along the top) and non-steelhead (along the bottom), with the fitted binomial GLM in red. The dashed line shows where fish greater than that would have a greater than 50% probability of being a steelhead. The dotted line shows the 67 cm threshold for which fish we will be applying this model to."}
 spp_fl %>%
   mutate(spp = recode(spp,
                       "Resident RB" = "Bull Trout"),
@@ -1341,6 +1414,32 @@ spp_fl %>%
   theme(legend.position = "none") +
   labs(y = "Probability of Being a Steelhead",
        x = "Fork Length (cm)")
+
+```
+
+Figure \@ref(fig:fig-gam) shows the fitted GAM that predicts the probability of being a steelhead based on a fish's length and date of capture. Note that the mean probability of being a steelhead for a 67 cm long fish, averaged across the entire season, would be `r round(mean(pred_tab$prob_sthd[pred_tab$length == 67]), 3) * 100`% of being a steelhead with this model. Also note that a fish 60 cm long would not be considered a steelhead if observed at the very beginning of the season or after the beginning of May, but would if observed in late March or April. 
+
+```{r fig-gam, fig.cap = "The color depicts the probability of fish being a steelhead given the date of capture and fork length. Fish above the black line would have a greater than 50% probability of being a steelhead. The dotted line shows the 67 cm threshold for which fish we will be applying this model to."}
+pred_tab %>%
+  ggplot(aes(x = survey_date,
+             y = length,
+             fill = prob_sthd)) +
+  geom_tile() +
+  theme(panel.border = element_blank(),
+        panel.grid = element_blank(),
+        legend.position = "bottom") +
+  scale_fill_viridis_c(name = "Probability of\nBeing a Steelhead") +
+  geom_line(data = pred_tab %>%
+              filter(prob_sthd >= p_pred) %>%
+              group_by(survey_date) %>%
+              filter(length == min(length)) %>%
+              arrange(survey_date, length),
+            color = "black") +
+  geom_hline(yintercept = 67,
+             linetype = 2,
+             color = 'darkgray') +
+  labs(x = "Date",
+       y = "Fork Length (cm)")
 
 ```
 
@@ -1521,7 +1620,7 @@ all_preds %>%
 
 * What to do with rows where `data_recorded ` is "Partial"? This includes `r sum(sonar_raw$data_recorded  == "Partial")` rows, or `r round(sum(sonar_raw$data_recorded  == "Partial") / nrow(sonar_raw) * 100, 1)`% of the data. Exclude and treat as missing data? Or is there a better way to parse this? Currently I've filtered it out and treated it as missing.
 * What should we do with observations with confidence of 2 or 3? They are currently excluded completely.
-
+* What to do about kelts?
 
 ## Expanding 30 min to 60 min
 
@@ -1532,10 +1631,12 @@ all_preds %>%
   
 ## Excluding Bull Trout
 
-* Should we assume any fish smaller than 40 cm is a bull trout, since that was the smallest steelhead length recorded? Under the current method, this doesn't matter because any fish smaller than `r round(cut_pt, 1)` cm is excluded from the steelhead counts.
+* Should we assume any fish smaller than 40 cm is a bull trout, since that was the smallest steelhead length recorded? Under the current method, this doesn't matter because any fish smaller than `r round(min(pred_tab$length[pred_tab$prob_sthd >= 0.5]), 1)` cm is excluded from the steelhead counts regardless of date of capture.
 
-* Incorporating some kind of spline or curve to account for steelhead run timing could improve this model. For example a 55 cm long fish might be considered a non-steelhead early or late in the season, but could be predicted to be a steelhead in the middle of the run, because it may be more likely that any fish is a steelhead then. To fit this model, I'll need the date when each fish's length was taken as part of the species composition data.
+<!-- * Incorporating some kind of spline or curve to account for steelhead run timing could improve this model. For example a 55 cm long fish might be considered a non-steelhead early or late in the season, but could be predicted to be a steelhead in the middle of the run, because it may be more likely that any fish is a steelhead then. To fit this model, I'll need the date when each fish's length was taken as part of the species composition data. -->
 
+* I updated this model to include both the Julian day of capture and the fish length, using a spline for both covariates. The fish length spline turned out to be pretty close to a straight line, with larger fish being more likely to be a steelhead. The Julian day of capture had a peak probability of being a steelhead occurring in mid- to late-March, and tapering off on either side. Given there were a number of bull trout caught in the very beginning and towards the end of the sampling period, this shape makes sense. However, it should be noted that including Julian day of capture reduced the estimated number of small steelhead (less than 67 cm) in all years. It was a small reduction in 2020 and 2021, but a substantial one in 2019. This appears to be because there were a large number of small fish detected late in the run in 2019. Because they were so late, virtually
+none of those fish were predicted to be steelhead using this updated model.
 
 ## Missing Data
 
