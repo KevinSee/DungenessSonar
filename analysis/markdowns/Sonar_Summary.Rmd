@@ -159,6 +159,33 @@ sonar_raw <- read_csv(here("analysis/data/raw_data",
   # drop any detections after June 1
   filter(month(date) < 6)
 
+# drop a couple records because they don't match
+# one upstream and one downstream fish recorded during the 2nd half hour,
+# but no data in teh first half hour, at all
+sonar_raw %<>%
+  filter(!(date == ymd(20200322) &
+             hour == "30M 0S"))
+
+sonar_raw %<>%
+  filter(!(date == ymd(20200301) &
+             (str_detect(hour, "^0S") |
+                str_detect(hour, "^30M") |
+                str_detect(hour, "^1H"))))
+
+
+# add one missing row (assuming no fish detected)
+sonar_raw %<>%
+  bind_rows(sonar_raw %>%
+              filter(date == ymd(20190320),
+                     str_detect(hour, "15H")) %>%
+              mutate(hour = hour + minutes(30),
+                     date_time = date + hour,
+                     data_reviewed = "Second 30",
+                     across(c(direction),
+                            ~ NA),
+                     across(c(length:confidence),
+                            ~ NA_real_))) %>%
+  arrange(date_time)
 
 # pull out records of fish detections
 sonar_fish <- sonar_raw %>%
@@ -168,51 +195,83 @@ sonar_fish <- sonar_raw %>%
   mutate(across(time,
                 hms))
 
-# determine operational times
-hrs_summ <- sonar_raw %>%
+#--------------------------------------------------
+# which hours do we want to group together?
+#--------------------------------------------------
+
+# # 12 hour blocks
+# hrs_fct_grp <- rep(1:2, each = 12) |>
+#   set_names(0:23)
+
+# # 8 hour blocks
+# hrs_fct_grp <- rep(1:3, each = 8) |>
+#   set_names(0:23)
+
+# 6 hour blocks
+hrs_fct_grp <- rep(1:4, each = 6) |>
+  set_names(0:23)
+
+# # 4 hour blocks
+# hrs_fct_grp <- rep(1:6, each = 4) |>
+#   set_names(0:23)
+
+# # 2 hour blocks
+# hrs_fct_grp <- rep(1:12, each = 2) |>
+#   set_names(0:23)
+
+hr_periods <- sonar_raw %>%
   group_by(year) %>%
   summarize(across(date_time,
                    list(min = min,
                         max = max),
                    na.rm = T,
-                   .names = "{.fn}")) %>%
-  mutate(across(c(min, max),
-                floor_date,
-                unit = "hour")) %>%
-  mutate(n_hrs = difftime(max, min, units = "hours"),
-         across(n_hrs,
-                as.numeric)) %>%
-  rowwise() %>%
-  mutate(hrs = list(min + dhours(0:n_hrs)),
-         ints = list(interval(start = hrs,
-                              end = lead(hrs) - dseconds(1))))
-
-hr_periods <- hrs_summ %>%
-  select(year, ints) %>%
-  unnest(ints) %>%
-  mutate(start_int = int_start(ints),
-         end_int = int_end(ints),
-         end_int = if_else(is.na(end_int),
-                           start_int,
-                           end_int)) %>%
-  mutate(ints = interval(start = start_int,
-                         end = end_int)) %>%
-  select(-start_int,
-         -end_int) %>%
-  rowwise() %>%
-  mutate(operational = if_else(sum(sonar_raw$date_time[sonar_raw$data_recorded != "Partial"] %within% ints, na.rm = T) > 0,
+                   .names = "{.fn}"),
+            .groups = "drop") %>%
+  mutate(date_time = map2(min,
+                     max,
+                     .f = function(x, y) seq(x, y, by = 30*60))) %>%
+  select(-min, -max) %>%
+  unnest(date_time) %>%
+  mutate(date = floor_date(date_time,
+                           unit = "day"),
+         time = difftime(date_time, date,
+                         units = "mins"),
+         across(time,
+                as.period)) %>%
+  left_join(sonar_raw %>%
+              filter(data_recorded != "Partial") %>%
+              select(year, date, time = hour,
+                     data_recorded,
+                     data_reviewed) %>%
+              distinct() %>%
+              mutate(reviewed = TRUE)) %>%
+  mutate(across(reviewed,
+                replace_na,
+                FALSE)) %>%
+  mutate(reviewed = if_else(!is.na(data_reviewed) & data_reviewed == "No data",
+                            F, reviewed)) %>%
+  mutate(operational = if_else(reviewed |
+                                 (is.na(data_recorded) & lag(data_recorded) %in% c("Full")),
                                T, F)) %>%
-  ungroup() %>%
-  mutate(date = floor_date(int_start(ints), "day"),
-         date_time = floor_date(int_start(ints), "hour"),
-         hour = difftime(date_time, date,
+  mutate(dt = floor_date(date_time,
+                         unit = "hours"),
+         hour = difftime(dt, date,
                          units = "hours"),
          across(hour,
                 as.period)) %>%
-  select(year, date, hour, everything()) %>%
-  arrange(date_time)
+  select(-dt) %>%
+  mutate(hr_fct = hrs_fct_grp[as.character(hour(date_time))]) %>%
+  relocate(hour, hr_fct, .after = "time") %>%
+  # fix one data_reviewed entry
+  mutate(data_reviewed = if_else(str_detect(time, "30M") & 
+                                   data_recorded == "Full" &
+                                   data_reviewed == "First 30",
+                                 "Second 30",
+                                 data_reviewed))
 
-
+#--------------------------------------------------
+# species composition data
+#--------------------------------------------------
 spp_comp <- read_csv(here("analysis/data/raw_data",
                           "species comp.csv")) %>%
   clean_names() %>%
@@ -242,6 +301,8 @@ spp_fl <- readxl::read_excel(here("analysis/data/raw_data",
                                   "Species Comp ALL.xlsx"),
                              "2021 lengths") %>%
   clean_names() %>%
+  filter(str_detect(survey_type,
+                    "Gill Net")) %>%
   mutate(spp = recode(species,
                       "Resident rainbow" = "Resident RB")) %>%
   select(spp,
@@ -256,54 +317,73 @@ spp_fl <- readxl::read_excel(here("analysis/data/raw_data",
 
 
 ```{r}
-#--------------------------------------------------
-# which hours do we want to group together?
-#--------------------------------------------------
-
-# # 12 hour blocks
-# hrs_fct_grp <- rep(1:2, each = 12) |>
-#   set_names(0:23)
-
-# # 8 hour blocks
-# hrs_fct_grp <- rep(1:3, each = 8) |>
-#   set_names(0:23)
-
-# 6 hour blocks
-hrs_fct_grp <- rep(1:4, each = 6) |>
-  set_names(0:23)
-
-# # 4 hour blocks
-# hrs_fct_grp <- rep(1:6, each = 4) |>
-#   set_names(0:23)
-
-# # 2 hour blocks
-# hrs_fct_grp <- rep(1:12, each = 2) |>
-#   set_names(0:23)
-
 # generate percent of each time step sonar was operational
+half_hr_op = hr_periods %>%
+  group_by(year, 
+           date,
+           time) %>%
+  summarize(across(date_time,
+                   min),
+            tot_pers = n(),
+            op_pers = sum(operational),
+            op_perc = op_pers / tot_pers,
+            .groups = "drop")
+
 hr_op <- hr_periods %>%
-  group_by(year, date,
-           hour) %>%
-  summarize(tot_hrs = n(),
-            op_hrs = sum(operational),
-            op_perc = op_hrs / tot_hrs,
+  group_by(year, 
+           date,
+           hour,
+           hr_fct) %>%
+  summarize(across(date_time,
+                   min),
+            n_hrs = n_distinct(hour),
+            tot_pers = n(),
+            op_pers = sum(operational),
+            op_perc = op_pers / tot_pers,
             .groups = "drop")
 
 hrs_op <- hr_periods %>%
-  mutate(hr_fct = hrs_fct_grp[as.character(hour(date_time))]) %>%
-  group_by(year, date,
+  group_by(year, 
+           date,
            hr_fct) %>%
-  summarize(tot_hrs = n(),
-            op_hrs = sum(operational),
-            op_perc = op_hrs / tot_hrs,
-            .groups = "drop")
+  summarize(across(date_time,
+                   min),
+            n_hrs = n_distinct(hour),
+            tot_pers = n(),
+            op_pers = sum(operational),
+            op_perc = op_pers / tot_pers,
+            .groups = "drop") %>%
+  left_join(hrs_fct_grp %>%
+              enframe(name = "hour",
+                      value = "hr_fct") %>%
+              mutate(across(hour,
+                            as.numeric)) %>%
+              group_by(hr_fct) %>%
+              summarize(across(hour,
+                               min))) %>%
+  mutate(across(hour,
+                as.period,
+                unit = "hour"),
+         date_time = date + hour) %>%
+  relocate(hour,
+           .after = "date")
 
 day_op <- hr_periods %>%
   group_by(year, date) %>%
-  summarize(tot_hrs = n(),
-            op_hrs = sum(operational),
-            op_perc = op_hrs / tot_hrs,
-            .groups = "drop")
+  summarize(across(date_time,
+                   min),
+            n_hrs = n_distinct(hour),
+            tot_pers = n(),
+            op_pers = sum(operational),
+            op_perc = op_pers / tot_pers,
+            .groups = "drop") %>%
+  mutate(hour = 0,
+         across(hour,
+                as.period,
+                unit = "hour"),
+         hr_fct = as.integer(1)) %>%
+  relocate(hour, hr_fct,
+           .after = "date")
 
 # wk_op <- hr_periods %>%
 #   mutate(wk_grp = week(date_time)) %>%
@@ -327,97 +407,194 @@ ops_df <- tibble(time_scale = as_factor(c('Hour',
 ## Expanding 30 min to 60 min
 
 ```{r mod-data}
-# which hours had the 2nd 30 min reviewed?
-full_hrs <- sonar_raw %>%
-  filter(data_reviewed == "Second 30") %>%
-  select(year, date, hour) %>%
-  mutate(hour = hour - minutes(30)) %>%
-  left_join(sonar_raw) %>%
-  bind_rows(sonar_raw %>%
-              filter(data_reviewed == "Second 30")) %>%
-  arrange(date, hour) %>%
-  filter(data_recorded == "Full") %>%
-  select(year, date, hour, data_recorded, data_reviewed) %>%
-  distinct() %>%
-  mutate(date_time = date + hour,
-         hr_group = floor_date(date_time, "hours"),
-         day_group = floor_date(date_time, "days"),
-         # wk_group = floor_date(date_time, "weeks"),
-         operational = TRUE) %>%
-  mutate(hr_fct = hrs_fct_grp[as.character(hour(date_time))],
-         hrs_group = paste(date, hr_fct)) %>%
-  mutate(across(ends_with("_group"),
-                ~ as.factor(as.numeric(as.factor(.))))) %>%
-  relocate(operational,
-           .before = "hr_group")
+# add counts of upstream, downstream and net large fish to hr_periods
+ts_df <- hr_periods %>%
+  left_join(sonar_fish %>%
+              filter(confidence == 1) %>%
+              group_by(year,
+                       date,
+                       time = hour,
+                       sthd_length) %>%
+              count(direction) %>%
+              ungroup() %>%
+              filter(direction %in% c("upstream",
+                                      "downstream")) %>%
+              mutate(across(direction,
+                            recode,
+                            "upstream" = "up",
+                            "downstream" = "down")) %>%
+              pivot_wider(names_from = direction,
+                          values_from = n,
+                          values_fill = 0)) %>%
+  mutate(across(c(up, down),
+                ~ if_else(is.na(.) & reviewed, as.integer(0), .))) %>%
+  mutate(net = up - down)
 
+# which hours had the 2nd 30 min reviewed?
+full_hrs <- hr_periods %>%
+  filter(data_reviewed %in% c("First 30",
+                              "Second 30")) %>%
+  group_by(date, hour) %>%
+  mutate(n_pers = n(),
+         n_first = sum(str_detect(data_reviewed, "First")),
+         n_second = sum(str_detect(data_reviewed, "Second"))) %>%
+  filter(n_pers == 2) %>%
+  arrange(date_time) %>%
+  ungroup() %>%
+  select(all_of(names(hr_periods)))
 
 # period comparison for all hours with first and second half hours fully recorded
-per_comp <- full_hrs %>%
-  filter(operational) %>%
-  select(year:hour,
-         hr_fct,
-         time_period = data_reviewed,
-         ends_with("_group")) %>%
-  distinct() %>%
-  mutate(across(time_period,
-                str_remove,
-                " 30$")) %>%
-  left_join(sonar_fish %>%
-              filter(confidence == 1,
-                     sthd_length))
+# comp_30_df <- ts_df %>%
+#   filter(sthd_length) %>%
+#   filter(data_reviewed == "Second 30") %>%
+#   select(date_time) %>%
+#   mutate(across(date_time,
+#                 ~ . + dminutes(-30))) %>%
+#   left_join(ts_df %>%
+#               filter(sthd_length)) %>%
+#   bind_rows(ts_df %>%
+#               filter(sthd_length) %>%
+#               filter(data_reviewed == "Second 30")) %>%
+#   filter(reviewed) %>%
+#   filter(data_reviewed %in% c("First 30",
+#                               "Second 30")) %>%
+#   arrange(date_time) %>% 
+#   mutate(date_time = date + hour) %>%
+#   select(year, 
+#          date_time,
+#          date, 
+#          hour,
+#          hr_fct,
+#          sthd_length,
+#          data_reviewed,
+#          up, down,
+#          net) %>%
+#   mutate(across(data_reviewed,
+#                 recode,
+#                 "First 30" = "first",
+#                 "Second 30" = "second")) %>%
+#   pivot_longer(cols = c(up, down, net),
+#                names_to = "direction",
+#                values_to = "n_fish") %>%
+#   pivot_wider(names_from = data_reviewed,
+#               names_sort = T,
+#               values_from = n_fish,
+#               values_fill = 0)
 
+comp_30_df <- full_hrs %>%
+  left_join(ts_df %>%
+              filter(sthd_length)) %>%
+  mutate(across(c(up, down, net),
+                replace_na,
+                0)) %>%
+  mutate(dt = date + hour,
+         hr_grp = factor(dt,
+                         labels = 1:n_distinct(dt))) %>%
+  group_by(hr_grp) %>%
+  mutate(tot_fish = sum(up, down, na.rm = T)) %>%
+  ungroup() %>%
+  filter(tot_fish > 0) %>%
+  mutate(date_time = date + hour) %>%
+  select(year, 
+         date_time,
+         date, 
+         hour,
+         hr_fct,
+         data_reviewed,
+         up, down,
+         net) %>%
+  mutate(across(data_reviewed,
+                recode,
+                "First 30" = "first",
+                "Second 30" = "second")) %>%
+  pivot_longer(cols = c(up, down, net),
+               names_to = "direction",
+               values_to = "n_fish") %>%
+  pivot_wider(names_from = data_reviewed,
+              values_from = n_fish)
 
 # group data by different time-scales
 per_fit_df <- tibble(time_scale = as_factor(c('Hour',
                                           paste(24 / max(hrs_fct_grp), 'Hour Block'),
                                           'Day')),
-                 model_df = list(per_comp %>%
-                                   rename(fct_group = hr_group) %>%
-                                   mutate(hour = if_else(time_period == "Second",
-                                                         hour - minutes(30),
-                                                         hour)) %>%
-                                   select(-day_group,
-                                          -hrs_group),
-                                 per_comp %>%
-                                   rename(fct_group = hrs_group) %>%
-                                   select(-day_group,
-                                          -hr_group),
-                                 per_comp %>%
-                                   rename(fct_group = day_group) %>%
-                                   select(-hr_group,
-                                          -hrs_group))) %>%
-  mutate(model_df = map(model_df,
-                        .f = function(x) {
-                          x %>%
-                            group_by(year, date,
-                                     fct_group,
-                                     time_period,
-                                     direction) %>%
-                            summarize(n_fish = sum(!is.na(frame), na.rm = T),
-                                      .groups = "drop") %>%
-                            filter(!is.na(direction)) %>%
-                            pivot_wider(names_from = direction,
-                                        values_from = n_fish,
-                                        values_fill = 0) %>%
-                            mutate(tot_fish = upstream - downstream) %>%
-                            select(-any_of(c("downstream",
-                                             "upstream"))) %>%
-                            pivot_wider(names_from = time_period,
-                                        values_from = tot_fish,
-                                        names_sort = T,
-                                        values_fill = 0) %>%
-                            mutate(Total = First + Second) %>%
-                            clean_names()
-                          }))
-
+                 model_df = list(comp_30_df %>%
+                                   mutate(fct_group = date + hour,
+                                          across(fct_group,
+                                                 ~ factor(as.character(.),
+                                                          labels = 1:n_distinct(.)))) %>%
+                                   group_by(date, 
+                                            direction, 
+                                            fct_group) %>%
+                                   summarize(across(date_time,
+                                                       min),
+                                             across(c(first, 
+                                                      second),
+                                                    sum),
+                                             .groups = "drop"),
+                                 
+                                 comp_30_df %>%
+                                   mutate(fct_group = date + (hr_fct * 24 / max(hrs_fct_grp)),
+                                          across(fct_group,
+                                                 ~ factor(as.character(.),
+                                                          labels = 1:n_distinct(.)))) %>%
+                                   group_by(date, 
+                                            direction,
+                                            hr_fct,
+                                            fct_group) %>%
+                                   summarize(across(date_time,
+                                                       min),
+                                             across(c(first, 
+                                                      second),
+                                                    sum),
+                                             .groups = "drop") %>%
+                                   left_join(hrs_fct_grp %>%
+                                               enframe(name = "hour",
+                                                       value = "hr_fct") %>%
+                                               mutate(across(hour,
+                                                             as.numeric)) %>%
+                                               group_by(hr_fct) %>%
+                                               summarize(across(hour,
+                                                                min))) %>%
+                                   mutate(across(hour,
+                                                 as.period,
+                                                 unit = "hour"),
+                                          date_time = date + hour),
+                                 
+                                 comp_30_df %>%
+                                   mutate(fct_group = date,
+                                          across(fct_group,
+                                                 ~ factor(as.character(.),
+                                                          labels = 1:n_distinct(.)))) %>%
+                                   group_by(date, 
+                                            direction, 
+                                            fct_group) %>%
+                                   summarize(across(date_time,
+                                                       min),
+                                             across(c(first, 
+                                                      second),
+                                                    sum),
+                                             .groups = "drop") %>%
+                                   mutate(across(date_time,
+                                                 floor_date,
+                                                 unit = "days")))) %>%
+  unnest(model_df) %>%
+  mutate(total = first + second) %>%
+  mutate(across(direction,
+                factor,
+                levels = c("up",
+                           "down",
+                           "net"))) %>%
+  arrange(time_scale,
+          direction) %>%
+  nest(model_df = -c(time_scale,
+                    direction))
 ```
 
 We started by examining the counts during the first 30 minutes and the entire hour. First, we filtered for records with a confidence level of 1 (extremely confident) and a length greater than 67 cm to ensure we were only comparing records of steelhead. For each hour with both halves recorded and for each half hour, we summed the fish determined to be moving upstream, and those moving downstream, and calculated the number of net upstream fish (upstream - downstream). We then added the two half hours together to provide a number of the net upstream fish for that hour. 
 
 We compared the first half hour with the entire hour at several temporal scales. We started with a single hour, then also summed net upstream fish in `r 24 / max(hrs_fct_grp)` hour blocks, and finally summed the net upstream fish by date. The data was structured such that hours where both half hours were examined were usually consecutive at least up to the day scale, meaning each `r 24 / max(hrs_fct_grp)` hour block and each day had nearly identical amounts of time with two half hours to other periods at the same temporal scale.
 
-For each temporal scale grouping, we fit a linear model with the counts of net upstream fish in the first 30 minutes as the independent variable and the total net upstream fish for the hour as the dependent variable. In each model, we fixed the intercept at 0, to ensure that if no fish were counted in the first half hour, we would expand that to zero fish for the entire hour. We focused on the estimated slope, hypothesizing that it should be 2. 
+For each temporal scale grouping and direction (up, down and net upstream), we fit a linear model with the counts of fish in the first 30 minutes as the independent variable and the total count of fish in the entire hour as the dependent variable. In each model, we fixed the intercept at 0, to ensure that if no fish were counted in the first half hour, we would expand that to zero fish for the entire hour. We focused on the estimated slope, hypothesizing that it should be 2. 
 
 ```{r fit-models}
 per_fit_df %<>%
@@ -430,13 +607,25 @@ per_fit_df %<>%
                      .f = broom::tidy),
          ci = map(mod,
                   .f = function(x) {
-                    confint(x) %>%
-                      as_tibble()
+                    ci = confint(x)
+                    if(class(ci)[1] == "matrix") {
+                      ci %<>%
+                        as_tibble()
+                    } else {
+                      ci %<>%
+                        enframe() %>%
+                        pivot_wider()
+                    }
+                    return(ci)
                   })) %>%
   mutate(slope = map_dbl(coefs,
                          "estimate"),
          se = map_dbl(coefs,
                          "std.error"),
+         sigma = map_dbl(mod,
+                     .f = function(x) {
+                       summary(x)$sigma
+                     }),
          R2 = map_dbl(mod,
                      .f = function(x) {
                        summary(x)$r.squared
@@ -451,52 +640,199 @@ per_fit_df %<>%
 
 ```
 
+```{r k-fold-cv, eval = T}
+# how many folds?
+k_folds <- 20
+
+# split data into training and test samples by day.
+# predict whole day and calculate forecast statistics
+cv_res = NULL
+for(i in 1:k_folds) {
+  
+  set.seed(i * 10 + 6)
+  train_dates <- sort(sample(unique(comp_30_df$date),
+                             0.7 * n_distinct(comp_30_df$date)))
+  
+  cv_df <- per_fit_df %>%
+    mutate(train_df = map(model_df,
+                          .f = function(x) {
+                            x %>%
+                              filter(date %in% train_dates)
+                          }),
+           test_df = map(model_df,
+                         .f = function(x) {
+                           x %>%
+                             filter(!date %in% train_dates)
+                         }),
+           mod = map(train_df,
+                     .f = function(x) {
+                       lm(total ~ first - 1,
+                          data = x)
+                     }),
+           preds = map2(mod,
+                        test_df,
+                        .f = function(x, y) {
+                          y %>%
+                            bind_cols(predict(x,
+                                              newdata = y,
+                                              se.fit = T) %>%
+                                        as_tibble() %>%
+                                        select(pred = fit,
+                                               se = se.fit))
+                        }))
+  
+  res <- cv_df %>%
+    select(time_scale, 
+           direction,
+           preds) %>%
+    unnest(preds) %>%
+    mutate(year = year(date)) %>%
+    group_by(time_scale,
+             year,
+             date,
+             direction) %>%
+    summarize(across(c(first, second,
+                       total, pred),
+                     sum),
+              across(se,
+                     ~ sum(.^2)),
+              .groups = "drop") %>%
+    mutate(error = pred - total) %>%
+    filter(total != 0) %>%
+    group_by(time_scale,
+             direction) %>%
+    summarize(mean_bias = mean(error),
+              median_bias = median(error),
+              rmse = sqrt(mean(error^2)),
+              # rmse_perc = rmse / mean(total),
+              mae = mean(abs(error)),
+              # mae_perc = sum(abs(error)) / sum(total),
+              mape = mean(abs(error) / total),
+              .groups = "drop") %>%
+    add_column(fold = i,
+               .before = 0)
+  
+  if(i == 1) {
+    cv_res <- res
+  } else {
+    cv_res %<>%
+      bind_rows(res)
+  }
+}
+
+```
+
+We also performed `r k_folds`-fold cross validation. For each cross-validation, we created a training dataset by sampling all the data from 70% of the days with full hours reviewed, and held out the remaining 30% as a test dataset. We fit the same linear regression to each training dataset, and used it to predict the total net upstream steelhead for each day in the test dataset. We then summarized the mean bias, root mean squared error (RMSE), mean absolute error (MAE) and mean absolute percent error (MAPE) for each temporal scale. To calculate these, first we calculated the error for each day, $e_t$, as the predicted minus the observed.
+
+$$
+e_t = pred_t - obs_t
+$$
+The mean bias is simply the average $e_t$. RMSE is defined as
+
+$$
+RMSE = \sqrt{\frac{1}{n}\sum{e_t^2}}
+$$
+MAE is
+
+$$
+MAE = \frac{1}{n}\sum{|e_t|}
+$$
+MAPE is the average of percent errors, and is defined as:
+
+$$
+MAPE = \frac{1}{n}\sum{\frac{|e_t|}{obs_t}}
+$$
+
 ```{r make-predictions-big-fish}
 # what fish were observed outside the full hour periods?
-other_fish <- sonar_fish %>%
-  anti_join(full_hrs %>%
-              select(year, date, hour)) %>%
-  filter(confidence == 1,
-         sthd_length) %>%
-  mutate(hr_group = floor_date(date_time, "hours")) %>%
-  mutate(hr_fct = hrs_fct_grp[as.character(hour(date_time))],
-         hrs_group = paste(date, hr_fct)) %>%
-  mutate(day_group = floor_date(date_time, "days")) %>%
-  mutate(across(ends_with("_group"),
-                ~ as.factor(as.numeric(as.factor(.)))))
-
-pred_other <- tibble(time_scale = as_factor(c('Hour',
+other_big_fish <- hr_periods %>%
+  anti_join(comp_30_df %>%
+              select(date, hour) %>%
+              distinct(),
+            by = c("date", "hour")) %>%
+  filter(reviewed) %>%
+  left_join(ts_df %>%
+              filter(sthd_length)) %>%
+  filter(sthd_length) %>%
+  pivot_longer(cols = c(up,
+                        down,
+                        net),
+               names_to = "direction",
+               values_to = "first") %>%
+  select(year:hr_fct,
+         direction,
+         first)
+  
+pred_big_other <- tibble(time_scale = as_factor(c('Hour',
                                               paste(24 / max(hrs_fct_grp), 'Hour Block'),
                                               'Day')),
-                     pred_df = list(other_fish %>%
-                                      rename(fct_group = hr_group),
-                                    other_fish %>%
-                                      rename(fct_group = hrs_group),
-                                    other_fish %>%
-                                      rename(fct_group = day_group))) %>%
-  mutate(pred_df = map(pred_df,
-                       .f = function(x) {
-                         x %>%
-                           group_by(year, date,
-                                    fct_group,
-                                    time_period = data_reviewed,
-                                    direction) %>%
-                           summarize(n_fish = sum(!is.na(frame), na.rm = T),
-                                     .groups = "drop") %>%
-                           filter(direction %in% c("upstream",
-                                                   "downstream")) %>%
-                           pivot_wider(names_from = direction,
-                                       values_from = n_fish,
-                                       values_fill = 0) %>%
-                           mutate(first = upstream - downstream) %>%
-                           select(-any_of(c("downstream",
-                                            "upstream"))) %>%
-                           clean_names()
-                       })) %>%
+                     pred_df = list(other_big_fish %>%
+                                      mutate(fct_group = date + hour,
+                                             across(fct_group,
+                                                    ~ factor(as.character(.),
+                                                             labels = 1:n_distinct(.)))) %>%
+                                      group_by(date, 
+                                               direction, 
+                                               fct_group) %>%
+                                      summarize(across(date_time,
+                                                       min),
+                                                across(c(first),
+                                                       sum),
+                                                .groups = "drop"),
+                                    
+                                    other_big_fish %>%
+                                      mutate(fct_group = date + hours(hr_fct * 24 / max(hrs_fct_grp)),
+                                             across(fct_group,
+                                                    ~ factor(as.character(.),
+                                                             labels = 1:n_distinct(.)))) %>%
+                                      group_by(date, 
+                                               direction, 
+                                               hr_fct,
+                                               fct_group) %>%
+                                      summarize(across(date_time,
+                                                       min),
+                                                across(c(first),
+                                                       sum),
+                                                .groups = "drop") %>%
+                                      left_join(hrs_fct_grp %>%
+                                               enframe(name = "hour",
+                                                       value = "hr_fct") %>%
+                                                 mutate(across(hour,
+                                                               as.numeric)) %>%
+                                                 group_by(hr_fct) %>%
+                                                 summarize(across(hour,
+                                                                  min)),
+                                               by = "hr_fct") %>%
+                                      mutate(across(hour,
+                                                    as.period,
+                                                    unit = "hour"),
+                                             date_time = date + hour),
+                                    
+                                    other_big_fish %>%
+                                      mutate(fct_group = date,
+                                             across(fct_group,
+                                                    ~ factor(as.character(.),
+                                                             labels = 1:n_distinct(.)))) %>%
+                                      group_by(date, 
+                                               direction, 
+                                               fct_group) %>%
+                                      summarize(across(date_time,
+                                                       min),
+                                                across(c(first),
+                                                       sum),
+                                                .groups = "drop") %>%
+                                      mutate(date_time = floor_date(date_time,
+                                                                    unit = "days")) %>%
+                                      mutate(hr_fct = as.integer(1)))) %>%
+  unnest(pred_df) %>%
+  nest(pred_df = -c(time_scale,
+                    direction)) %>%
   left_join(per_fit_df %>%
               select(time_scale,
+                     direction,
                      mod),
-            by = "time_scale") %>%
+            by = c("time_scale",
+                   "direction")) %>%
   mutate(preds = map2(mod,
                       pred_df,
                       .f = function(x, y) {
@@ -510,78 +846,66 @@ pred_other <- tibble(time_scale = as_factor(c('Hour',
                   "se.fit")) %>%
   select(-mod, -preds) %>%
   unnest(cols = c(pred_df, total, se)) %>%
-  left_join(tibble(time_scale = as_factor(c('Hour',
-                                            paste(24 / max(hrs_fct_grp), 'Hour Block'),
-                                            'Day')),
-                   time_df = list(other_fish %>%
-                                    mutate(fct_group = hr_group) %>%
-                                    select(year, date, hour, 
-                                           fct_group) %>%
-                                    distinct(),
-                                  other_fish %>%
-                                    mutate(fct_group = hrs_group) %>%
-                                    select(year, date, hr_fct, 
-                                           fct_group) %>%
-                                    distinct(),
-                                  other_fish %>%
-                                    mutate(fct_group = day_group) %>%
-                                    select(year, date, 
-                                           fct_group) %>%
-                                    distinct())) %>%
-              unnest(time_df)) %>%
+  mutate(year = year(date),
+         hour = hour(date_time),
+         hr_fct = hrs_fct_grp[as.character(hour)],
+         across(hour,
+                as.period,
+                unit = "hours"),
+         sthd_length = T) %>%
   select(time_scale,
+         direction,
          year,
          date,
          hour,
          hr_fct,
+         sthd_length,
          everything()) %>%
-  select(-fct_group,
-         -time_period) %>%
+  select(-fct_group) %>%
   add_column(est_type = "Half Hour",
              .before = "first")
+
 ```
 
 ```{r}
 fish_big <- per_fit_df %>%
   select(time_scale, 
+         direction,
          model_df) %>%
   unnest(model_df) %>%
-  left_join(tibble(time_scale = as_factor(c('Hour',
-                                            paste(24 / max(hrs_fct_grp), 'Hour Block'),
-                                            'Day')),
-                   time_df = list(per_comp %>%
-                                    mutate(fct_group = hr_group) %>%
-                                    mutate(hour = if_else(time_period == "Second",
-                                                          hour - minutes(30),
-                                                          hour)) %>%
-                                    select(year, date, hour, 
-                                           fct_group) %>%
-                                    distinct(),
-                                  per_comp %>%
-                                    mutate(fct_group = hrs_group) %>%
-                                    select(year, date, hr_fct, 
-                                           fct_group) %>%
-                                    distinct(),
-                                  per_comp %>%
-                                    mutate(fct_group = day_group) %>%
-                                    select(year, date, 
-                                           fct_group) %>%
-                                    distinct())) %>%
-              unnest(time_df)) %>%
-  relocate(hour, hr_fct,
-           .after = date) %>%
   select(-fct_group) %>%
-  mutate(est_type = "Full Hour") %>%
-  relocate(est_type, 
-           .before = first) %>%
+  mutate(year = year(date),
+         hour = hour(date_time),
+         hr_fct = hrs_fct_grp[as.character(hour)],
+         across(hour,
+                as.period,
+                unit = "hours")) %>%
+  mutate(hour = if_else(time_scale == "Day",
+                        as.period(0, 
+                                  unit = "hour"),
+                        hour),
+         hour = if_else(str_detect(hour, "24H"),
+                        as.period(0,
+                                  unit = "hour"),
+                        hour),
+         date_time = date + hour,
+         sthd_length = T) %>%
+  select(time_scale,
+         direction,
+         year,
+         date,
+         hour,
+         hr_fct,
+         sthd_length,
+         everything()) %>%
+  ungroup() %>%
   mutate(se = 0) %>%
-  bind_rows(pred_other) %>%
-  relocate(hr_fct,
-           .after = date) %>%
+  add_column(est_type = "Full Hour",
+             .before = "first") %>%
+  bind_rows(pred_big_other) %>%
   arrange(time_scale,
-          date,
-          hr_fct,
-          hour)
+          direction,
+          date_time)
 
 ```
 
@@ -643,7 +967,7 @@ fl_mod <- spp_fl %>%
 
 # what is the fork length when 50% of being a steelhead?
 p_pred = 0.5
-pred_tab <- crossing(length = seq(30, 80, by = 0.05),
+pred_tab <- crossing(length = seq(20, 80, by = 0.05),
                      survey_date = seq(ymd(20210203),
                                        ymd(20210601),
                                        by = "1 days")) %>%
@@ -695,7 +1019,9 @@ cut_pt <- boot::logit(p_pred) %>%
 small_fish <- sonar_fish %>%
   filter(confidence == 1,
          !sthd_length) %>%
-  select(year:hour, time, date_time,
+  select(year:hour, 
+         time, 
+         date_time,
          direction,
          length,
          frame:range) %>%
@@ -715,7 +1041,25 @@ small_fish <- sonar_fish %>%
 # combine with some other information
 small_sthd <- small_fish %>%
   filter(prob_sthd >= 0.5) %>%
-  left_join(sonar_fish) %>%
+  group_by(year,
+           date,
+           time = hour,
+           date_time) %>%
+  count(direction) %>%
+  ungroup() %>%
+  filter(direction %in% c("upstream",
+                          "downstream")) %>%
+  mutate(across(direction,
+                recode,
+                "upstream" = "up",
+                "downstream" = "down")) %>%
+  left_join(hr_periods %>%
+               filter(reviewed) %>%
+               select(year,
+                      date, time,
+                      hour,
+                      hr_fct,
+                      data_reviewed)) %>%
   left_join(full_hrs %>%
               select(year, date, hour) %>%
               distinct() %>%
@@ -723,63 +1067,119 @@ small_sthd <- small_fish %>%
   mutate(across(full_hour,
                 replace_na,
                 F)) %>%
-  mutate(time_period = data_reviewed) %>%
-  mutate(across(time_period,
-                str_remove,
-                " 30$")) %>%
-  mutate(hr_group = floor_date(date_time, "hours")) %>%
-  mutate(hr_fct = hrs_fct_grp[as.character(hour(date_time))],
-         hrs_group = paste(date, hr_fct)) %>%
-  mutate(day_group = floor_date(date_time, "days")) %>%
-  mutate(across(ends_with("_group"),
-                ~ as.factor(as.numeric(as.factor(.)))))
-
+  arrange(date_time) %>%
+  mutate(across(data_reviewed,
+                recode,
+                "First 30" = "first",
+                "Second 30" = "second")) %>%
+  pivot_wider(names_from = direction,
+              values_from = n,
+              values_fill = 0) %>%
+  mutate(net = up - down) %>%
+  pivot_longer(cols = c(up, down, net),
+               names_to = "direction",
+               values_to = "n") %>%
+  select(-time,
+         -date_time) %>%
+  pivot_wider(names_from = data_reviewed,
+              values_from = n) %>%
+  mutate(across(c(first,
+                  second),
+                ~ if_else(is.na(.) & full_hour,
+                          as.integer(0), .))) %>%
+  mutate(date_time = date + hour) %>%
+  select(year, date, hour, hr_fct, date_time,
+         full_hour,
+         direction,
+         first,
+         second) %>%
+  add_column(sthd_length = F,
+             .before = "full_hour")
 
 # start with small steelhead counted during whole hour operations 
 calc_small <- tibble(time_scale = as_factor(c('Hour',
                                               paste(24 / max(hrs_fct_grp), 'Hour Block'),
                                               'Day')),
                      full_sm_sthd = list(small_sthd %>%
-                                      filter(full_hour) %>%
-                                      rename(fct_group = hr_group) %>%
-                                      mutate(hour = if_else(time_period == "Second",
-                                                         hour - minutes(30),
-                                                         hour)),
-                                    small_sthd %>%
-                                      filter(full_hour) %>%
-                                      rename(fct_group = hrs_group),
-                                    small_sthd %>%
-                                      filter(full_hour) %>%
-                                      rename(fct_group = day_group))) %>%
-  mutate(full_sm_sthd = map(full_sm_sthd,
-                       .f = function(x) {
-                         x %>%
-                           group_by(year, date,
-                                    fct_group,
-                                    time_period,
-                                    direction) %>%
-                           summarize(n_fish = sum(!is.na(frame), na.rm = T),
-                                     .groups = "drop") %>%
-                           filter(direction %in% c("upstream",
-                                                   "downstream")) %>%
-                           pivot_wider(names_from = direction,
-                                       values_from = n_fish,
-                                       values_fill = 0) %>%
-                            mutate(tot_fish = upstream - downstream) %>%
-                           select(-any_of(c("downstream",
-                                            "upstream"))) %>%
-                           pivot_wider(names_from = time_period,
-                                       values_from = tot_fish,
-                                       values_fill = 0,
-                                       names_sort = T) %>%
-                           mutate(Total = First + Second) %>%
-                           clean_names() %>%
-                           mutate(se = 0)
-                       })) %>%
+                                           filter(full_hour) %>%
+                                           mutate(total = first + second,
+                                                  se = 0),
+                                         
+                                         small_sthd %>%
+                                           filter(full_hour) %>%
+                                           mutate(total = first + second) %>%
+                                           mutate(fct_group = date + hours(hr_fct * 24 / max(hrs_fct_grp)),
+                                                  across(fct_group,
+                                                         ~ factor(as.character(.),
+                                                                  labels = 1:n_distinct(.)))) %>%
+                                           group_by(fct_group,
+                                                    year,
+                                                    date, 
+                                                    direction,
+                                                    hr_fct) %>%
+                                           summarize(across(date_time,
+                                                            min),
+                                                     across(c(first,
+                                                              second,
+                                                              total),
+                                                            sum),
+                                                     .groups = "drop") %>%
+                                           left_join(hrs_fct_grp %>%
+                                                       enframe(name = "hour",
+                                                               value = "hr_fct") %>%
+                                                       mutate(across(hour,
+                                                                     as.numeric)) %>%
+                                                       group_by(hr_fct) %>%
+                                                       summarize(across(hour,
+                                                                        min)),
+                                                     by = "hr_fct") %>%
+                                           mutate(across(hour,
+                                                         as.period,
+                                                         unit = "hour"),
+                                                  date_time = date + hour) %>%
+                                           mutate(se = 0),
+                                         
+                                         small_sthd %>%
+                                           filter(full_hour) %>%
+                                           mutate(total = first + second) %>%
+                                           group_by(year,
+                                                    date, 
+                                                    direction) %>%
+                                           summarize(across(c(first,
+                                                              second,
+                                                              total),
+                                                            sum),
+                                                     .groups = "drop") %>%
+                                           mutate(hr_fct = as.integer(1),
+                                                  hour = as.period(0, unit = "hour"),
+                                                  date_time = date + hour) %>%
+                                           mutate(se = 0))) %>%
   unnest(full_sm_sthd) %>%
+  mutate(across(direction,
+                factor,
+                levels = c("up",
+                           "down",
+                           "net"))) %>%
+  # mutate(year = year(date),
+  #        hour = hour(date_time),
+  #        hr_fct = hrs_fct_grp[as.character(hour)],
+  #        across(hour,
+  #               as.period,
+  #               unit = "hours")) %>%
+  select(time_scale,
+         direction,
+         year,
+         date,
+         hour,
+         hr_fct,
+         everything()) %>%
+  select(-fct_group) %>%
+  mutate(across(sthd_length,
+                replace_na,
+                F)) %>%
   arrange(time_scale,
-          date,
-          fct_group) %>%
+          direction,
+          date_time) %>%
   add_column(est_type = "Full Hour",
              .before = "first")
 
@@ -789,37 +1189,64 @@ pred_small <- tibble(time_scale = as_factor(c('Hour',
                                               paste(24 / max(hrs_fct_grp), 'Hour Block'),
                                               'Day')),
                      pred_df = list(small_sthd %>%
-                                      filter(!full_hour) %>%
-                                      rename(fct_group = hr_group),
+                                      filter(!full_hour),
+                                    
                                     small_sthd %>%
                                       filter(!full_hour) %>%
-                                      rename(fct_group = hrs_group),
-                                    small_sthd %>%
-                                      filter(!full_hour) %>%
-                                      rename(fct_group = day_group))) %>%
-  mutate(pred_df = map(pred_df,
-                       .f = function(x) {
-                         x %>%
-                           group_by(year, date,
-                                    fct_group,
-                                    time_period,
-                                    direction) %>%
-                           summarize(n_fish = sum(!is.na(frame), na.rm = T),
-                                     .groups = "drop") %>%
-                           filter(direction %in% c("upstream",
-                                                   "downstream")) %>%
-                           pivot_wider(names_from = direction,
-                                       values_from = n_fish,
-                                       values_fill = 0) %>%
-                           mutate(first = upstream - downstream) %>%
-                           select(-any_of(c("downstream",
-                                            "upstream"))) %>%
-                           clean_names()
-                       })) %>%
+                                      mutate(fct_group = date + hours(hr_fct * 24 / max(hrs_fct_grp)),
+                                             across(fct_group,
+                                                    ~ factor(as.character(.),
+                                                             labels = 1:n_distinct(.)))) %>%
+                                      group_by(fct_group,
+                                               year,
+                                               date, 
+                                               direction,
+                                               hr_fct) %>%
+                                      summarize(across(date_time,
+                                                       min),
+                                                across(c(first,
+                                                         second),
+                                                       sum),
+                                                .groups = "drop") %>%
+                                      left_join(hrs_fct_grp %>%
+                                                  enframe(name = "hour",
+                                                          value = "hr_fct") %>%
+                                                  mutate(across(hour,
+                                                                as.numeric)) %>%
+                                                  group_by(hr_fct) %>%
+                                                  summarize(across(hour,
+                                                                   min)),
+                                                by = "hr_fct") %>%
+                                      mutate(across(hour,
+                                                    as.period,
+                                                    unit = "hour"),
+                                             date_time = date + hour),
+                                         
+                                         small_sthd %>%
+                                           filter(!full_hour) %>%
+                                           group_by(year,
+                                                    date, 
+                                                    direction) %>%
+                                           summarize(across(c(first,
+                                                              second),
+                                                            sum),
+                                                     .groups = "drop") %>%
+                                           mutate(hr_fct = as.integer(1),
+                                                  hour = as.period(0, unit = "hour"),
+                                                  date_time = date + hour))) %>%
+  unnest(pred_df) %>%
+  select(-fct_group) %>%
+  mutate(across(sthd_length,
+                replace_na,
+                F)) %>%
+  nest(pred_df = -c(time_scale,
+                    direction)) %>%
   left_join(per_fit_df %>%
               select(time_scale,
+                     direction,
                      mod),
-            by = "time_scale") %>%
+            by = c("time_scale",
+                   "direction")) %>%
   mutate(preds = map2(mod,
                       pred_df,
                       .f = function(x, y) {
@@ -833,55 +1260,21 @@ pred_small <- tibble(time_scale = as_factor(c('Hour',
                   "se.fit")) %>%
   select(-mod, -preds) %>%
   unnest(cols = c(pred_df, total, se)) %>%
-  select(-time_period) %>%
-  add_column(est_type = "Half Hour",
-             .before = "first")
-
-fish_small <- calc_small %>%
-  bind_rows(pred_small) %>%
-  arrange(time_scale, 
-          date,
-          fct_group) %>%
-  left_join(tibble(time_scale = as_factor(c('Hour',
-                                            paste(24 / max(hrs_fct_grp), 'Hour Block'),
-                                            'Day')),
-                   time_df = list(small_sthd %>%
-                                    mutate(fct_group = hr_group) %>%
-                                    mutate(hour = if_else(time_period == "Second",
-                                                         hour - minutes(30),
-                                                         hour)) %>%
-                                    select(year, date, hour, 
-                                           fct_group) %>%
-                                    distinct(),
-                                  small_sthd %>%
-                                    mutate(fct_group = hrs_group) %>%
-                                    select(year, date, hr_fct, 
-                                           fct_group) %>%
-                                    distinct(),
-                                  small_sthd %>%
-                                    mutate(fct_group = day_group) %>%
-                                    select(year, date, 
-                                           fct_group) %>%
-                                    distinct())) %>%
-              unnest(time_df)) %>%
   select(time_scale,
+         direction,
          year,
          date,
          hour,
          hr_fct,
          everything()) %>%
-  select(-fct_group)
+  add_column(est_type = "Half Hour",
+             .before = "first")
 
-# fish_cnts %>%
-#   left_join(small_cnts %>%
-#               rename(sm_est_type = est_type) %>%
-#               rename(small_tot = total,
-#                      small_se = se)) %>%
-#   filter(!is.na(small_tot),
-#          est_type != sm_est_type) %>%
-#   tabyl(est_type, sm_est_type)
-#   mutate(date_time = ymd_hms(paste(date, hour))) %>%
-  
+fish_small <- pred_small %>%
+  bind_rows(calc_small) %>%
+  arrange(time_scale,
+          direction,
+          date_time)
 
 ```
 
@@ -889,7 +1282,11 @@ fish_small <- calc_small %>%
 fish_est <- fish_big %>%
   mutate(size = "big") %>%
   bind_rows(fish_small %>%
+              select(-full_hour) %>%
+              select(all_of(names(fish_big))) %>%
               mutate(size = "small")) %>%
+  select(-sthd_length) %>%
+  mutate(hr_fct = hrs_fct_grp[as.character(hour(date_time))]) %>%
   pivot_wider(names_from = size,
               values_from = c(first, second, total, se)) %>%
   mutate(across(c(starts_with("first"),
@@ -916,42 +1313,48 @@ fish_est <- fish_big %>%
 # deal with some mismatches between small/big fish (duplicate hour groups / days)
 dup_est <- fish_est %>%
   unite(id,
-        time_scale, date, hour, hr_fct,
+        time_scale, date, hour, hr_fct, direction,
+        # time_scale, direction, date_time,
         remove = F) %>%
   filter(id %in% id[duplicated(id)]) %>%
   arrange(time_scale,
-          id,
+          direction,
+          date_time,
           est_type)
 
-fish_est <- fish_est %>%
-  anti_join(dup_est) %>%
-  bind_rows(dup_est %>%
-              group_by(time_scale,
-                       year, 
-                       date, 
-                       hr_fct,
-                       hour) %>%
-              summarize(across(c(first_big:total_small,
-                                 total),
-                               sum,
-                               na.rm = T),
-                        .groups = "drop") %>%
-              left_join(dup_est %>%
-                          group_by(time_scale,
-                                   year, 
-                                   date, 
-                                   hr_fct,
-                                   hour) %>%
-                          summarize(across(c(contains("se"),
-                                             -contains("second")),
-                                           ~ sqrt(sum(.^2, na.rm = T))),
-                                    .groups = "drop")) %>%
-              mutate(est_type = "Mixed") %>%
-              select(any_of(names(dup_est)))) %>%
-  arrange(time_scale,
-          date,
-          hour,
-          hr_fct)
+if(nrow(dup_est) > 0) {
+  
+  fish_est <- fish_est %>%
+    anti_join(dup_est,
+              by = c("time_scale",
+                     "date",
+                     "hour",
+                     "hr_fct",
+                     "direction")) %>%
+    bind_rows(dup_est %>%
+                group_by(time_scale,
+                         direction,
+                         year, 
+                         date, 
+                         hr_fct,
+                         hour,
+                         date_time) %>%
+                summarize(across(c(first_big:total_small,
+                                   total),
+                                 sum,
+                                 na.rm = T),
+                          across(c(contains("se"),
+                                   -contains("second")),
+                                 ~ sqrt(sum(.^2, na.rm = T))),
+                          .groups = "drop") %>%
+                mutate(est_type = "Mixed") %>%
+                select(any_of(names(dup_est)))) %>%
+    arrange(time_scale,
+            direction,
+            date,
+            hour,
+            hr_fct)
+}
 
 ```
 
@@ -959,6 +1362,7 @@ fish_est <- fish_est %>%
 # are the estimates of big and small steelhead correlated?
 cor_tab <- fish_est %>%
   group_by(time_scale,
+           direction,
            year) %>%
   nest() %>%
   ungroup() %>%
@@ -986,30 +1390,32 @@ fish_cnts <- fish_est %>%
          -contains("small")) %>%
   full_join(ops_df %>%
               unnest(ops) %>%
-              select(-tot_hrs,
-                     -op_hrs)) %>%
-  mutate(date_time = if_else(time_scale == "Hour",
-                             date + hour,
-                             if_else(time_scale == "Day",
-                                     as.POSIXct(date),
-                                     date + hours((hr_fct - 1) * (24 / max(hrs_fct_grp)))))) %>%
-  relocate(date_time, 
-           .after = hour) %>%
+              mutate(date_time = date + hour) %>%
+              select(-ends_with("_pers"),
+                     -n_hrs) %>%
+              crossing(direction = unique(fish_est$direction))) %>%
   arrange(time_scale,
+          direction,
           date_time) %>%
   mutate(across(total,
-                ~ . / op_perc)) %>%
+                replace_na,
+                0)) %>%
+  mutate(across(total,
+                ~ . / op_perc),
+         across(se,
+                ~ if_else(op_perc > 0 & op_perc < 1,
+                          . / op_perc,
+                          .))) %>%
   mutate(est_type = if_else(is.na(est_type),
                             if_else(op_perc == 0,
                                     "Missing Data",
-                                    if_else(op_perc == 1,
+                                    if_else(op_perc == 1 & total == 0,
                                             "Zero Counts",
                                             "Partial Count")),
                             est_type)) %>%
-  mutate(across(c(total, se),
-                ~ if_else(is.na(.) & op_perc > 0,
-                          0,
-                          .)))
+  mutate(across(se,
+                ~ if_else(is.na(.) & total == 0 & est_type == "Zero Counts" & op_perc == 1,
+                          0, .)))
 ```
 
 ```{r}
@@ -1040,11 +1446,13 @@ library(imputeTS)
 
 ts_df <- fish_cnts %>%
   select(time_scale,
+         direction,
          year,
          date_time,
          est_type,
          total, se) %>%
   group_by(time_scale,
+           direction,
            year) %>%
   nest() %>%
   ungroup() %>%
@@ -1115,6 +1523,7 @@ ts_df %<>%
 all_preds <- fish_cnts %>%
   full_join(ts_df %>%
               select(time_scale,
+                     direction,
                      year,
                      data,
                      pred_se = se,
@@ -1134,19 +1543,9 @@ all_preds <- fish_cnts %>%
                             str_remove,
                             "_pred$")) %>%
               mutate(lci = qnorm(0.025, est, pred_se),
-                     uci = qnorm(0.975, est, pred_se)) %>%
-              mutate(date = floor_date(date_time,
-                                       unit = "days"),
-                     hour = if_else(time_scale == "Hour",
-                                    hms(paste(hour(date_time),
-                                              minute(date_time),
-                                              second(date_time))),
-                                    as.period(NA)),
-                     hr_fct = if_else(str_detect(time_scale,
-                                                 "Block"),
-                                      hour(date_time) / (24 / max(hrs_fct_grp)) + 1,
-                                      NA_real_))) %>%
+                     uci = qnorm(0.975, est, pred_se))) %>%
   select(time_scale:hour,
+         hr_fct,
          date_time,
          everything()) %>%
   mutate(model = if_else(is.na(model),
@@ -1193,8 +1592,10 @@ all_preds <- fish_cnts %>%
 
 ```{r miss-data}
 ts_df %>%
-  select(time_scale, year,
+  select(time_scale, 
+         year,
          n_periods:perc_NA) %>%
+  distinct() %>%
   mutate(across(perc_NA,
                 ~ . * 100)) %>%
   arrange(year,
@@ -1227,6 +1628,7 @@ The expansion factor (i.e. slope) changes depending on the temporal scale that d
 ```{r period-comp-fig, fig.cap = "Scatter plots showing the net counts of fish moving upstream, using hours with both the first 30 minutes and second 30 minutes. The counts are summarized by hour, six hour blocks and entire day (24 hours) in the different facets. The dashed red line is has a slope of 2 (expected value), the dotted grey line has a slope of 1, and the blue line is the linear regression fit to that data, with 95% confidence intervals."}
 per_fit_df %>%
   select(time_scale,
+         direction,
          model_df) %>%
   unnest(model_df) %>%
   ggplot(aes(x = first,
@@ -1242,8 +1644,9 @@ per_fit_df %>%
   # geom_point() +
   geom_point(position = position_jitter(0.2, 0.2,
                                         seed = 4)) +
-  facet_wrap(~ time_scale,
-             nrow = 1,
+  facet_wrap(~ time_scale + direction,
+             nrow = 3,
+             ncol = 3,
              scales = "free") +
   labs(x = "Only first 30 minutes",
        y = "Entire hour")
@@ -1259,11 +1662,13 @@ per_fit_df %>%
                 2)) %>%
   mutate(CI = paste(`2.5 %`, `97.5 %`, sep = "-")) %>%
   select(time_scale,
+         direction,
          slope,
          se,
          CI,
          adj_R2) %>%
   kable(col.names = c("Time Scale",
+                      "Direction",
                       "Slope",
                       "SE",
                       "95% CI",
@@ -1271,37 +1676,118 @@ per_fit_df %>%
         digits = 2,
         booktabs = T,
         linesep = "",
-        caption = "Results of fitting linear models with total net upstream fish as the response and the net upstream fish in the first 30 minutes as the covariate with no intercept.") %>%
+        caption = "Results of fitting linear models with up, down and net upstream fish as the response and the number of fish counted in that direction in the first 30 minutes as the covariate with no intercept.") %>%
   kable_styling()
 
 ```
 
+```{r k-fold-tab}
+cv_tab <- cv_res %>%
+  group_by(time_scale,
+           direction) %>%
+  summarize(across(-c(fold),
+                   mean),
+            .groups = "drop") %>%
+  arrange(direction,
+          abs(median_bias)) %>%
+          # rmse) %>%
+  select(-median_bias)
+
+min_stats = cv_tab %>%
+  pivot_longer(cols = -c(time_scale,
+                         direction),
+               names_to = "metric",
+               values_to = "value") %>%
+  select(-time_scale) %>%
+  group_by(direction,
+           metric) %>%
+  filter(abs(value) == min(abs(value))) %>%
+  pivot_wider(names_from = metric,
+              values_from = value) %>%
+  select(any_of(names(cv_tab)))
+
+cv_tab %>%
+  kbl(col.names = c("Time Scale",
+                    "Direction",
+                    "Avg. Bias",
+                    "RMSE",
+                    "MAE",
+                    "MAPE"),
+      digits = 2,
+      escape = T,
+      booktabs = T,
+      linesep = "",
+      caption = "Results of k-fold cross validation. Best result of each performance indicator is in bold.") %>%
+  kable_styling() %>%
+  row_spec(c(3, 6),
+           hline_after = T) %>%
+  column_spec(3,
+              bold = if_else(1:nrow(cv_tab) %in% which(cv_tab$mean_bias %in% min_stats$mean_bias),
+                                         T, F)) %>%
+  column_spec(4,
+              bold = if_else(1:nrow(cv_tab) %in% which(cv_tab$rmse %in% min_stats$rmse),
+                                         T, F)) %>%
+  column_spec(5,
+              bold = if_else(1:nrow(cv_tab) %in% which(cv_tab$mae %in% min_stats$mae),
+                                         T, F)) %>%
+  column_spec(6,
+              bold = if_else(1:nrow(cv_tab) %in% which(cv_tab$mape %in% min_stats$mape),
+                                         T, F))
+
+```
+
+
 ```{r big-est}
 fish_big %>%
   group_by(time_scale,
+           direction,
            year) %>%
   summarize(total = sum(total, na.rm = T),
             se = sqrt(sum(se^2, na.rm = T)),
             .groups = "drop") %>%
+  pivot_wider(names_from = direction,
+              values_from = c(total, se),
+              names_glue = "{direction}_{.value}") %>%
+  mutate(up_down_total = up_total - down_total,
+         up_down_se = sqrt((down_se^2 + up_se^2)),
+         diff = up_down_total - net_total) %>%
+  select(time_scale, 
+         year,
+         starts_with("up_down"),
+         starts_with("net"),
+         diff) %>%
   arrange(year, time_scale) %>%
   kable(booktabs = T,
         linesep = "",
         col.names = c("Time Scale",
                       "Year",
-                      "Estimate",
-                      "SE"),
-        digits = c(0, 0, 0, 2),
+                      "Up - Down Estimate",
+                      "Up - Down SE",
+                      "Net Estimate",
+                      "Net SE",
+                      "Difference"),
+        digits = c(0, 0, 
+                   0, 2,
+                   0, 2,
+                   0),
         caption = "Estimates of total net upstream fish larger than 67 cm, using only extremely confident observations. There are three estimates per year, corresponding to the three different regression models for expanding 30 minute observations.") %>%
   kable_styling() %>%
   row_spec(row = c(3, 6),
            hline_after = T)
 ```
 
-```{r ts-est, fig.height = 7, fig.cap = "Time-series of estimates based on available data, using only extremely confident observations of fish greater than 67 cm, faceted by year. Colors correspond to which regression model was used to expand the 30 minutes observations. Any uncertainty shown is derived from the linear regression model."}
+```{r ts-est, fig.height = 7, fig.cap = "Time-series of estimates based on available data, using only extremely confident observations of fish greater than 67 cm, faceted by year and direction (upstream, downstream or net upstream). Colors correspond to which regression model was used to expand the 30 minutes observations. Any uncertainty shown is derived from the linear regression model."}
 fish_big %>%
   full_join(ops_df %>%
               unnest(ops)) %>%
+  filter(!is.na(direction)) %>%
+  mutate(across(direction,
+                factor,
+                levels = c("up",
+                           "down",
+                           "net"))) %>%
   group_by(time_scale,
+           direction,
            year,
            date) %>%
   summarize(avg_op = mean(op_perc),
@@ -1335,17 +1821,18 @@ fish_big %>%
                         end = 0.8) +
   scale_fill_viridis_d(name = "Model",
                         end = 0.8) +
-  facet_wrap(~ year,
-             ncol = 1,
+  facet_grid(direction ~ year,
              scales = "free") +
+  theme(legend.position = "bottom") +
   labs(x = "Date",
-       y = "Net Upstream Fish")
+       y = "Fish")
 
 ```
 
 ```{r est-corr}
 cor_tab <- fish_cnts %>%
   group_by(time_scale,
+           direction,
            year,
            date) %>%
   summarize(n_full_hr = sum(is.na(se)),
@@ -1356,11 +1843,21 @@ cor_tab <- fish_cnts %>%
          -se) %>%
   pivot_wider(names_from = time_scale,
               values_from = total) %>%
-  select(-year,
-         -date) %>%
-  corrr::correlate(use = "pairwise.complete.obs",
-                   method = "pearson",
-                   quiet = T)
+  group_by(direction) %>%
+  nest() %>%
+  mutate(cor_tab = map(data,
+                       .f = function(x) {
+                         x %>%
+                           select(-year,
+                                  -date) %>%
+                           corrr::correlate(use = "pairwise.complete.obs",
+                                            method = "pearson",
+                                            quiet = T)
+                       })) %>%
+  ungroup() %>%
+  select(-data) %>%
+  unnest(cor_tab)
+  
 
 ```
 
@@ -1447,7 +1944,13 @@ Applying this model and rule-set to all the observed fish smaller than or equal 
 
 ```{r sm-est}
 fish_small %>%
-  group_by(time_scale, 
+  mutate(across(direction,
+                factor,
+                levels = c("up",
+                           "down",
+                           "net"))) %>%
+  group_by(Direction = direction,
+           time_scale, 
            year) %>%
   summarize(total = sum(total),
             se = sqrt(sum(se^2, na.rm = T)),
@@ -1462,30 +1965,48 @@ fish_small %>%
   kable(booktabs = T,
         linesep = "",
         digits = c(0, 0, 0, 2),
-        caption = "Estimates (SE) of total net upstream steelhead smaller than 67 cm, using only extremely confident observations. There are three estimates per year, corresponding to the three different regression models for expanding 30 minute observations.") %>%
+        caption = "Estimates (SE) of steelhead smaller than 67 cm, using only extremely confident observations, by direction of movement. There are three estimates per year, corresponding to the three different regression models for expanding 30 minute observations.") %>%
   kable_styling()
 
 ```
 
 ```{r tot-est}
 fish_est %>%
-  group_by(time_scale, 
+  group_by(time_scale,
+           direction,
            year) %>%
-  summarize(total = sum(total),
+  summarize(total = sum(total, na.rm = T),
             se = sqrt(sum(se^2, na.rm = T)),
             .groups = "drop") %>%
-  mutate(prnt_val = paste0(round(total), " (",
-                           round(se, 1),
-                           ")")) %>%
-  select(-total, -se) %>%
-  pivot_wider(names_from = year,
-              values_from = prnt_val) %>%
-  rename(`Time Scale` = time_scale) %>%
+  pivot_wider(names_from = direction,
+              values_from = c(total, se),
+              names_glue = "{direction}_{.value}") %>%
+  mutate(up_down_total = up_total - down_total,
+         up_down_se = sqrt((down_se^2 + up_se^2)),
+         diff = up_down_total - net_total) %>%
+  select(time_scale, 
+         year,
+         starts_with("up_down"),
+         starts_with("net"),
+         diff) %>%
+  arrange(year, time_scale) %>%
   kable(booktabs = T,
         linesep = "",
-        digits = c(0, 0, 0, 2),
-        caption = "Estimates (SE) of total net upstream steelhead, using only extremely confident observations. There are three estimates per year, corresponding to the three different regression models for expanding 30 minute observations.") %>%
-  kable_styling()
+        col.names = c("Time Scale",
+                      "Year",
+                      "Up - Down Estimate",
+                      "Up - Down SE",
+                      "Net Estimate",
+                      "Net SE",
+                      "Difference"),
+        digits = c(0, 0, 
+                   0, 2,
+                   0, 2,
+                   0),
+        caption = "Estimates of total steelhead, using only extremely confident observations. There are three estimates per year, corresponding to the three different regression models for expanding 30 minute observations.") %>%
+  kable_styling() %>%
+  row_spec(row = c(3, 6),
+           hline_after = T)
 
 ```
 
@@ -1517,28 +2038,34 @@ hr_periods %>%
   theme(legend.position = "bottom")
 ```
 
-```{r miss-ts, fig.height = 6, fig.cap = "Time series of upstream fish in blue, with missing data highlighted in red."}
+```{r miss-ts, fig.height = 6, fig.cap = "Time series of net upstream fish in blue, with missing data highlighted in red."}
 p_list = vector("list",
                 length = nrow(ts_df))
 for(i in seq_along(ts_df$time_scale)) {
   p_list[[i]] <- ggplot_na_distribution(ts_df$ts_zoo[[i]]) +
-    labs(title = paste(ts_df$time_scale[i], "in", ts_df$year[i]),
+    labs(title = paste(str_to_title(ts_df$direction[i]),
+                       ts_df$time_scale[i], "in", ts_df$year[i]),
          subtitle = element_blank()) +
     theme(axis.title.y = element_blank())
 }
-ggarrange(plotlist = p_list,
+
+# ggarrange(plotlist = p_list[which(ts_df$direction == "up")],
+# ggarrange(plotlist = p_list[which(ts_df$direction == "down")],
+ggarrange(plotlist = p_list[which(ts_df$direction == "net")],
           ncol = 3,
           nrow = 3,
           common.legend = T,
           legend = "bottom")
+
 ```
 
-After interpolating across the missing data, Table \@ref(tab:missing-tab) displays how many fish were added to each year's estimate, based on the temporal scale and the interpolation method. Table \@ref(tab:abund-est-missing) provides final estimates of total net upstream steelhead each year, including fish smaller than 67 cm and periods of missing data, split out by the temporal scale the data was summarized on. 
+After interpolating across the missing data, Table \@ref(tab:missing-tab) displays how many fish were added to each year's estimate, based on the temporal scale and the interpolation method. Table \@ref(tab:abund-est-missing) shows estimates of all steelhead, by year, direction and time-scale, split by what interpolation method was used. Table \@ref(tab:all-sthd-est) provides final estimates of total net upstream steelhead each year, including fish smaller than 67 cm and periods of missing data, split out by the temporal scale the data was summarized on and the interpolation model used for missing data. 
 
 ```{r missing-tab}
 all_preds %>%
   filter(is.na(total)) %>%
   group_by(time_scale,
+           direction,
            year,
            model) %>%
   summarize(pred_tot = sum(est, na.rm = T),
@@ -1549,17 +2076,19 @@ all_preds %>%
   pivot_wider(names_from = "model",
               values_from = prnt_value) %>%
   right_join(expand(all_preds,
-                    time_scale, year)) %>%
+                    time_scale, direction, year)) %>%
   arrange(year,
+          direction,
           time_scale) %>%
   kable(col.names = c("Time Scale",
+                      "Direction",
                       "Year",
                       "Kalman",
                       "Linear",
                       "MA"),
         booktabs = T,
         linesep = "",
-        caption = "Estimates (SE) of how many net upstream steelhead are added to the totals from periods with wholly missing data. Interpolation methods include the Kalman filter, linear model, and moving average. There are three estimates per year, corresponding to the three different temporal scales. Blank cells indicate no interpolation was necessary for that year / temporal scale combination.") %>%
+        caption = "Estimates (SE) of how many steelhead by direction are added to the totals from periods with wholly missing data. Interpolation methods include the Kalman filter, linear model, and moving average. There are three estimates per year, corresponding to the three different temporal scales. Blank cells indicate no interpolation was necessary for that year / temporal scale combination.") %>%
   kable_styling() %>%
   row_spec(row = c(3, 6),
            hline_after = T)
@@ -1570,6 +2099,7 @@ all_preds %>%
 all_preds %>%
   filter(!is.na(total)) %>%
   group_by(time_scale,
+           direction,
            year) %>%
   summarize(obs_tot = sum(total, na.rm = T),
             obs_se = sqrt(sum(se^2, na.rm = T)),
@@ -1577,6 +2107,7 @@ all_preds %>%
   full_join(all_preds %>%
               filter(is.na(total)) %>%
               group_by(time_scale,
+                       direction,
                        year,
                        model) %>%
               summarize(pred_tot = sum(est, na.rm = T),
@@ -1599,8 +2130,10 @@ all_preds %>%
               values_from = prnt_value) %>%
   select(-none) %>%
   arrange(year,
+          direction,
           time_scale) %>%
   kable(col.names = c("Time Scale",
+                      "Direction",
                       "Year",
                       "None",
                       "Kalman",
@@ -1608,35 +2141,131 @@ all_preds %>%
                       "MA"),
         booktabs = T,
         linesep = "",
-        caption = "Estimates (SE) of total net upstream steelhead, using only extremely confident observations, and after interpolating counts for periods of missing data. Interpolation methods include no interpolation, the Kalman filter, linear model, and moving average. There are three estimates per year, corresponding to the three different temporal scales.") %>%
+        caption = "Estimates (SE) of total steelhead by direction, using only extremely confident observations, and after interpolating counts for periods of missing data. Interpolation methods include no interpolation, the Kalman filter, linear model, and moving average. There are three estimates per year, corresponding to the three different temporal scales.") %>%
   kable_styling() %>%
   row_spec(row = c(3, 6),
            hline_after = T)
 
 ```
 
+```{r all-sthd-est}
+all_preds %>%
+  filter(!model %in% c("lin", "ma")) %>%
+  group_by(time_scale,
+           direction,
+           year) %>%
+  summarize(total = sum(est, na.rm = T),
+            se = sqrt(sum(se^2, na.rm = T)),
+            .groups = "drop") %>%
+  pivot_wider(names_from = direction,
+              values_from = c(total, se),
+              names_glue = "{direction}_{.value}") %>%
+  mutate(ts_model = "Kalman") %>%
+  bind_rows(all_preds %>%
+              filter(!model %in% c("kalman", "ma")) %>%
+              group_by(time_scale,
+                       direction,
+                       year) %>%
+              summarize(total = sum(est, na.rm = T),
+                        se = sqrt(sum(se^2, na.rm = T)),
+                        .groups = "drop") %>%
+              pivot_wider(names_from = direction,
+                          values_from = c(total, se),
+                          names_glue = "{direction}_{.value}") %>%
+              mutate(ts_model = "Linear")) %>%
+  bind_rows(all_preds %>%
+              filter(!model %in% c("kalman", "lin")) %>%
+              group_by(time_scale,
+                       direction,
+                       year) %>%
+              summarize(total = sum(est, na.rm = T),
+                        se = sqrt(sum(se^2, na.rm = T)),
+                        .groups = "drop") %>%
+              pivot_wider(names_from = direction,
+                          values_from = c(total, se),
+                          names_glue = "{direction}_{.value}") %>%
+              mutate(ts_model = "MA")) %>%
+  bind_rows(all_preds %>%
+              filter(!is.na(total)) %>%
+              group_by(time_scale,
+                       direction,
+                       year) %>%
+              summarize(total = sum(est, na.rm = T),
+                        se = sqrt(sum(se^2, na.rm = T)),
+                        .groups = "drop") %>%
+              pivot_wider(names_from = direction,
+                          values_from = c(total, se),
+                          names_glue = "{direction}_{.value}") %>%
+              mutate(ts_model = "None")) %>%
+  mutate(across(ts_model,
+                factor,
+                levels = c("None",
+                           "Kalman",
+                           "Linear",
+                           "MA"))) %>%
+  mutate(up_down_total = up_total - down_total,
+         up_down_se = sqrt((down_se^2 + up_se^2)),
+         diff = up_down_total - net_total) %>%
+  select(time_scale, 
+         year,
+         ts_model,
+         starts_with("up_down"),
+         starts_with("net"),
+         diff) %>%
+  arrange(year, 
+          time_scale,
+          ts_model) %>%
+  kable(booktabs = T,
+        linesep = "",
+        col.names = c("Time Scale",
+                      "Year",
+                      "Model",
+                      "Up - Down Estimate",
+                      "Up - Down SE",
+                      "Net Estimate",
+                      "Net SE",
+                      "Difference"),
+        digits = c(0, 0, 0,
+                   0, 2,
+                   0, 2,
+                   0),
+        caption = "Estimates of total net upstream fish, using only extremely confident observations. There are three estimates per year, corresponding to the three different regression models for expanding 30 minute observations.") %>%
+  kable_styling() %>%
+  row_spec(row = c(3, 6),
+           hline_after = T)
+```
+
+
+
 \newpage
 # Discussion Points
 
 * What to do with rows where `data_recorded ` is "Partial"? This includes `r sum(sonar_raw$data_recorded  == "Partial")` rows, or `r round(sum(sonar_raw$data_recorded  == "Partial") / nrow(sonar_raw) * 100, 1)`% of the data. Exclude and treat as missing data? Or is there a better way to parse this? Currently I've filtered it out and treated it as missing.
 * What should we do with observations with confidence of 2 or 3? They are currently excluded completely.
-* What to do about kelts?
+
+* What to do about kelts? There is currently one observation from the tangle netting that was identified as a kelt (caught on June 8, 2021). With enough data, we could build another GAM model to describe the probability of a steelhead moving downstream as being a kelt, perhaps based on Julian day. Unfortunately, we don't have nearly enough data at the moment. Alternatively, we could assign a date and assume all downstream fish before that date are ***not*** kelts, and all downstream fish observed after that date ***are*** kelts. Given the paucity of data, we may be relying on expert opinion to determine this date. 
 
 ## Expanding 30 min to 60 min
 
 * The regression between counts in the first hour and the entire hour shows a consistent expectation that the counts in the second part of the hour will be less than counts in the first part. This holds regardless of whether we aggregate data by hour, day or something in between. 
-* Currently I'm calculating the net upstream totals for each half hour period before running the regressions. If there's a compelling reason to either run separate regressions for downstream and upstream moving fish, or treat downstream and upstream fish from the same hour as two distinct data points, let's talk about that.
-  * We could run separate regressions for each year, but if the methodology is the same year-to-year, I don't see why we'd expect different results.
-  * Three years is not enough to use year as a random effect, but perhaps in a few more years we could explore this as an option.
+* However, if we split the counts into upstream and downstream, the results show closer equality between the first and second half hours, especially if we aggregate counts into 6 hour blocks, or entire days.
+  * I don't have a good explanation for why this occurs, but it seems worth utilizing (rather that using total net upstream regressions). 
+  * This could provide more control over how we account for kelts in the downstream data as well, providing another justification for this approach.
+  * One option is to assume the slope is 2, but use the standard error from these regressions to provide an estimate of uncertainty. Another is to use the estimated slope as well. Given that we have no expectation that the first half hour should have higher counts (in either direction) than the second, I'd be inclined to assume a slope of two. That approach will also mean that our estimates don't change as we gather additional data in the future.
+
+* Aggregating date to the 6 hour block or the day seems to make the most sense. The estimates from either of these are consistently higher than aggregating to the hour scale (due to higher regression slopes). However, the choice between the two will have impacts on our estimates. 
   
 ## Excluding Bull Trout
 
-* Should we assume any fish smaller than 40 cm is a bull trout, since that was the smallest steelhead length recorded? Under the current method, this doesn't matter because any fish smaller than `r round(min(pred_tab$length[pred_tab$prob_sthd >= 0.5]), 1)` cm is excluded from the steelhead counts regardless of date of capture.
+* Should we assume any fish smaller than 40 cm is a bull trout, since that was the smallest steelhead length recorded? Under the current method, fish caught towards the end of March are considered a steelhead if they are 
+at least `r filter(pred_tab, prob_sthd >= 0.5) %>% filter(length == min(length)) %>% pull(length) %>% round(1)` cm. This does increase the number of small steelhead we're estimating. 
 
-<!-- * Incorporating some kind of spline or curve to account for steelhead run timing could improve this model. For example a 55 cm long fish might be considered a non-steelhead early or late in the season, but could be predicted to be a steelhead in the middle of the run, because it may be more likely that any fish is a steelhead then. To fit this model, I'll need the date when each fish's length was taken as part of the species composition data. -->
+* Since the last iteration, I realized I had forgotten to filter the species length data to exclude all hook and line samples, which I presume came from further upstream in the watershed. Excluding this data is meant to avoid any confounding with steelhead encounters and day of year. However, this does reduce the dataset used to fit the GAM. While the general shape of Figure \@ref(fig:fig-gam) makes biological sense, it does predict most fish will be predicted to be steelhead between March and April, almost regardless of size. This has increased the estimates of small steelhead, but perhaps to a more realistic number.
 
-* I updated this model to include both the Julian day of capture and the fish length, using a spline for both covariates. The fish length spline turned out to be pretty close to a straight line, with larger fish being more likely to be a steelhead. The Julian day of capture had a peak probability of being a steelhead occurring in mid- to late-March, and tapering off on either side. Given there were a number of bull trout caught in the very beginning and towards the end of the sampling period, this shape makes sense. However, it should be noted that including Julian day of capture reduced the estimated number of small steelhead (less than 67 cm) in all years. It was a small reduction in 2020 and 2021, but a substantial one in 2019. This appears to be because there were a large number of small fish detected late in the run in 2019. Because they were so late, virtually
-none of those fish were predicted to be steelhead using this updated model.
+* The current model includes both the Julian day of capture and the fish length, using a spline for both covariates. The fish length spline turned out to be pretty close to a straight line, with larger fish being more likely to be a steelhead. The Julian day of capture had a peak probability of being a steelhead occurring in mid- to late-March, and tapering off on either side. Given there were a number of bull trout caught in the very beginning and towards the end of the sampling period, this shape makes sense. 
+<!-- However, it should be noted that including Julian day of capture reduced the estimated number of small steelhead (less than 67 cm) in all years. It was a small reduction in 2020 and 2021, but a substantial one in 2019. This appears to be because there were a large number of small fish detected late in the run in 2019. Because they were so late, virtually none of those fish were predicted to be steelhead using this updated model. -->
+
+* Incorporating another year of species composition data would make this species probability model more robust, especially for the spline related to the day of capture. 
 
 ## Missing Data
 
@@ -1644,5 +2273,27 @@ none of those fish were predicted to be steelhead using this updated model.
 * The uncertainty (e.g. standard error) grew when incorporating those missing data, which is appropriate. The uncertainty grew substantially in 2020, when there was a large period of missing data due to COVID restrictions.
 * Depending on how big the missing data gaps are, and the time-scale we are aggregating data on, there were some years and time-scales with no missing data (e.g. 24 hour scale in 2021). The lack of missing data relies on using the percentage of hours when sonar was operational within each time-step to increase the estimates for any time-steps when the operational time was less than 100%.
   * The alternative to expanding time-steps when the sonar was partially operational is to remove all data from those time-steps and treat them as missing data. 
+  * Or develop a threshold of operating percent (e.g. 20%?) below which we exclude that data because it's too small a percentage to feel comfortable expanding it, and instead rely on extrapolations from nearby time periods with full data.
   * It's unclear to me whether that would have a substantial impact on the overall estimates or uncertainty.
+  * I would recommend the operating threshold approach, maybe using 20% as a threshold. This would mean that for time-periods (6 hour blocks or days) when the sonar was operating for less than 20%, we would mark the data from that time period as `NA` and treat it as missing. Other time periods when the sonar was operating for more than 20% we would take the estimates for that operating time and expand them by the operating percentage. So for example, if we estimated 30 upstream fish during a time period when the sonar was only operating 60% of the time, we would expand by dividing 30 by 60% and end up with an estimate of 50 upstream fish.  
 
+# Decisions to be Made
+
+* Use separate upstream/downstream regressions, or net upstream?
+  * *Recommend:* separate upstream/downstream regressions
+* What time-scale shall we aggregate data on?
+  * *Recommend:* Day
+* Should we use estimated slope for expanding 30 min counts, or assume a slope of 2?
+  * *Recommend:* Assume a slope of 2
+* Should we impose a minimum length to consider a fish a steelhead?
+  * *Recommend:* Yes. The smallest observed steelhead length was `r min(spp_fl$fork_length[spp_fl$spp == "Steelhead"])` cm. I propose we use that as a cut off to override the GAM predictions for small fish, ensuring that every fish smaller than this threshold is considered a non-steelhead.
+* What to do with data with confidence 2 or 3?
+  * *Recommend:* delete / drop it
+* What time-series interpolation model should we use?
+  * *Recommend:* Kalman filter
+* What to do with time-periods when sonar only partially operated?
+  * *Recommend:* If sonar operated for less than a threshold (e.g. 20%), treat that data as missing and use time-series interpolation model. For operational percentages greater than this threshold, expand the estimates by that percentage. 
+* Include 2022 data?
+  * *Recommend:* Yes. Write up a report that covers 4 years of data: 2019-2022. 
+* How to account for kelts?
+  * *Recommend:* **???**
