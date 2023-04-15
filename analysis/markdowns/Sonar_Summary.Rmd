@@ -14,17 +14,6 @@ institute:
   - wdfw: Washington Department of Fish & Wildlife
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output: 
-    bookdown::pdf_document2:
-      fig_caption: yes
-      fig_height: 5
-      fig_width: 6
-      toc: yes
-      includes:
-        in_header: ../templates/header_WDFW.tex
-      pandoc_args:
-      - --lua-filter=../templates/scholarly-metadata.lua
-      - --lua-filter=../templates/author-info-blocks2.lua
-      - --lua-filter=../templates/pagebreak.lua
     wdfwTemplates::wdfw_html_format2:
       fig_caption: yes
       fig_height: 4
@@ -37,6 +26,17 @@ output:
       pandoc_args:
       - --lua-filter=../templates/scholarly-metadata.lua
       - --lua-filter=../templates/author-info-blocks.lua
+      - --lua-filter=../templates/pagebreak.lua
+    bookdown::pdf_document2:
+      fig_caption: yes
+      fig_height: 5
+      fig_width: 6
+      toc: yes
+      includes:
+        in_header: ../templates/header_WDFW.tex
+      pandoc_args:
+      - --lua-filter=../templates/scholarly-metadata.lua
+      - --lua-filter=../templates/author-info-blocks2.lua
       - --lua-filter=../templates/pagebreak.lua
     bookdown::word_document2:
       fig_caption: yes
@@ -952,11 +952,11 @@ spp_fl %>%
 ```{r fl-gam, eval = T}
 fl_mod <- spp_fl %>%
   mutate(spp = recode(spp,
-                      "Resident RB" = "Bull Trout"),
+                      "Resident RB" = "Bull Trout",
+                      "Cutthroat" = "Bull Trout"),
          across(spp,
-                fct_drop),
-         jday = yday(survey_date)) %>%
-  mutate(spp_fct = as.numeric(spp) - 1) %>%
+                fct_drop)) %>%
+  # mutate(spp_fct = as.numeric(spp) - 1) %>%
   gam(spp_fct ~ s(fl_z, k = 5, m = 2, bs = "tp") + 
         s(jday, k = 5, m = 2, bs = "tp"),
       data = .,
@@ -1869,7 +1869,8 @@ cor_tab <- fish_cnts %>%
 ```{r fig-glm, eval = F, fig.cap = "Points show the fork length of steelhead (along the top) and non-steelhead (along the bottom), with the fitted binomial GLM in red. The dashed line shows where fish greater than that would have a greater than 50% probability of being a steelhead. The dotted line shows the 67 cm threshold for which fish we will be applying this model to."}
 spp_fl %>%
   mutate(spp = recode(spp,
-                      "Resident RB" = "Bull Trout"),
+                      "Resident RB" = "Bull Trout",
+                      "Cutthroat" = "Bull Trout"),
          across(spp,
                 fct_drop)) %>%
   mutate(spp_fct = as.numeric(spp) - 1) %>%
@@ -2296,4 +2297,4 @@ at least `r filter(pred_tab, prob_sthd >= 0.5) %>% filter(length == min(length))
 * Include 2022 data?
   * *Recommend:* Yes. Write up a report that covers 4 years of data: 2019-2022. 
 * How to account for kelts?
-  * *Recommend:* **???**
+  * *Recommend:* Assume all downstream fish after May 1st are kelts
