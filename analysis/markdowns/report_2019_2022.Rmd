@@ -42,7 +42,7 @@ output:
       - --lua-filter=../templates/author-info-blocks.lua
       - --lua-filter=../templates/pagebreak.lua
     bookdown::pdf_document2:
-      keep_tex: TRUE
+      keep_tex: FALSE
       fig_caption: yes
       fig_height: 5
       fig_width: 6
