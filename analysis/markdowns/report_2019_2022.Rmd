@@ -18,6 +18,18 @@ institute:
   - wdfw: Washington Department of Fish & Wildlife
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output: 
+    bookdown::pdf_document2:
+      keep_tex: FALSE
+      fig_caption: yes
+      fig_height: 5
+      fig_width: 6
+      toc: yes
+      includes:
+        in_header: ../templates/header_WDFW.tex
+      pandoc_args:
+      - --lua-filter=../templates/scholarly-metadata.lua
+      - --lua-filter=../templates/author-info-blocks2.lua
+      - --lua-filter=../templates/pagebreak.lua
     wdfwTemplates::wdfw_html_format2:
       fig_caption: yes
       fig_height: 4
@@ -40,18 +52,6 @@ output:
       pandoc_args:
       - --lua-filter=../templates/scholarly-metadata.lua
       - --lua-filter=../templates/author-info-blocks.lua
-      - --lua-filter=../templates/pagebreak.lua
-    bookdown::pdf_document2:
-      keep_tex: FALSE
-      fig_caption: yes
-      fig_height: 5
-      fig_width: 6
-      toc: yes
-      includes:
-        in_header: ../templates/header_WDFW.tex
-      pandoc_args:
-      - --lua-filter=../templates/scholarly-metadata.lua
-      - --lua-filter=../templates/author-info-blocks2.lua
       - --lua-filter=../templates/pagebreak.lua
 bibliography:
   # - AUC.bib
@@ -163,7 +163,11 @@ SONAR may provide an alternative method for steelhead enumeration and run timing
 
 ## SONAR operation
 
-We deployed the ARIS 1800 Explorer, manufactured by Sound Metrics, of Bellevue, Washington in the lower Dungeness River during the majority of the steelhead run from 2018 through 2022. The ARIS 1800 uses 96 beams at 1.1/1.8 megahertz (Mhz) to project a 28-degree acoustic wedge. The SONAR unit was adjusted to have a pitch of 3.5 degrees to -8 degrees to ensonify the entire water column and channel. The unit was checked daily and adjusted as necessary to maintain full ensonification of the channel. Imagery was continuously recorded 24 hours a day, and saved in 30-minute files, so that 48 individual files were recorded for each full day of operation.
+We deployed the ARIS 1800 Explorer, manufactured by Sound Metrics, of Bellevue, Washington in the lower Dungeness River during the majority of the steelhead run from 2018 through 2022 (Figure \@ref(fig:wtsd-map)). The ARIS 1800 uses 96 beams at 1.1/1.8 megahertz (Mhz) to project a 28-degree acoustic wedge. The SONAR unit was adjusted to have a pitch of 3.5 degrees to -8 degrees to ensonify the entire water column and channel. The unit was checked daily and adjusted as necessary to maintain full ensonification of the channel. Imagery was continuously recorded 24 hours a day, and saved in 30-minute files, so that 48 individual files were recorded for each full day of operation.
+
+```{r wtsd-map, out.width = "90%", fig.align="center", fig.cap = "Location of SONAR in Dungeness River basin. Steelhead distribution shown in dark gray."}
+include_graphics(here("analysis/images/watershed_map.jpg"))
+```
 
 In 2018 the SONAR unit was deployed at approximately at river mile (RM) 0.2, below the majority of steelhead spawning habitat, and ensonified an approximately 20 meter (m) wide run in the river (Figure \@ref(fig:site-map)). The SONAR unit was mounted to a pole mount and attached to a reinforced ladder, secured to the river bottom by rebar (Figure \@ref(fig:setup-2018)). 
 
@@ -753,7 +757,7 @@ up_mod$model |>
   print()
 ```
 
-To combine the upstream and downstream estimates, we made one simplifying assumption related to kelting behavior. Prior to `r down_date`, we subtracted the total estimate of downstream moving fish from the total estimate of upstream moving fish. This is to prevent fish that are milling (moving upstream, then downstream, then upstream again) from being double counted. After `r down_date`, we ignored downstream moving fish and only estimated upstream moving fish, under the assumption that downstream moving fish are steelhead kelts that have spawned and therefore should not be subtracted from our escapement estimates. Obviously, there may be kelts prior to `r down_date`, and there may be milling fish after that date, but our assumption is that the number of downstream moving kelts prior to that date equals the number of downstream milling fish after that date. 
+To combine the upstream and downstream estimates, we made one simplifying assumption related to kelting behavior similar to the process outlined in @Metheny2012 and @Metheny2014. Prior to `r down_date`, we subtracted the total estimate of downstream moving fish from the total estimate of upstream moving fish. This is to prevent fish that are milling (moving upstream, then downstream, then upstream again) from being double counted. After `r down_date`, we ignored downstream moving fish and only estimated upstream moving fish, under the assumption that downstream moving fish are steelhead kelts that have spawned and therefore should not be subtracted from our escapement estimates. Obviously, there may be kelts prior to `r down_date`, and there may be milling fish after that date, but our assumption is that the number of downstream moving kelts prior to that date equals the number of downstream milling fish after that date. 
 
 ### Comparison with Redd-Based Estimates
 
