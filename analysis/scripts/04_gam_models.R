@@ -15,6 +15,7 @@ library(ggfortify)
 library(mgcv)
 library(tidymv) # to be replaced by tidygam at some point
 # library(tidygam)
+library(colorspace)
 
 theme_set(theme_bw())
 
@@ -1335,6 +1336,167 @@ ggsave(here("analysis/figures",
             "up_down_ratio.png"),
        width = 8,
        height = 8)
+
+
+# translate to percentage
+up_down_perc <-
+  day_draws |>
+  group_by(date, draw) |>
+  mutate(across(value,
+                ~ . / sum(value))) |>
+  ungroup() |>
+  mutate(year = year(date),
+         jday = yday(date))
+
+up_down_perc |>
+  group_by(date,
+           year,
+           jday,
+           direction) |>
+  summarize(
+    across(
+      value,
+      list(mean = ~ mean(.),
+           se = ~ sd(.)),
+      .names = "{.fn}"),
+    .groups = "drop") |>
+  left_join(up_down_perc |>
+              group_by(date,
+                       year,
+                       jday,
+                       direction) |>
+              reframe(across(value,
+                             ~ quantile(., c(0.025, 0.5, 0.975),
+                                        na.rm = T))) %>%
+              add_column(quantile = rep(c("2.5%", "50%", "97.5%"), nrow(.) / 3)) |>
+              pivot_wider(names_from = quantile,
+                          values_from = value)) |>
+  mutate(across(c(year, direction),
+                as_factor),
+         plot_date = ymd("20211231") + days(jday),
+         across(direction,
+                ~ str_to_title(.))) |>
+  ggplot(aes(x = plot_date,
+             y = mean,
+             color = direction,
+             fill = direction)) +
+  geom_ribbon(aes(ymin = `2.5%`,
+                  ymax = `97.5%`),
+              color = NA,
+              alpha = 0.2) +
+  geom_line() +
+  geom_smooth(se = F) +
+  scale_color_discrete_qualitative(palette = "Dynamic",
+                                   name = "Direction") +
+  scale_fill_discrete_qualitative(palette = "Dynamic",
+                                  name = "Direction") +
+  geom_vline(xintercept = ymd("20210515"),
+             linetype = 2) +
+  facet_wrap(~ year) +
+  labs(x = "Date",
+       y = "Percentage")
+
+
+# find day with maximum net upstream movement
+day_draw_cnts <-
+  day_draws |>
+  pivot_wider(names_from = direction,
+              values_from = value) |>
+  mutate(net = up - down) |>
+  mutate(year = year(date),
+         jday = yday(date)) |>
+  pivot_longer(cols = c(up, down, net),
+               names_to = "direction")
+
+
+day_summ <-
+  day_draw_cnts |>
+  group_by(date,
+           year,
+           jday,
+           direction) |>
+  summarize(
+    across(
+      value,
+      list(mean = ~ mean(.),
+           se = ~ sd(.)),
+      .names = "{.fn}"),
+    .groups = "drop") |>
+  left_join(day_draw_cnts |>
+              group_by(date,
+                       year,
+                       jday,
+                       direction) |>
+              reframe(across(value,
+                             ~ quantile(., c(0.025, 0.5, 0.975),
+                                        na.rm = T))) %>%
+              add_column(quantile = rep(c("2.5%", "50%", "97.5%"), nrow(.) / 3)) |>
+              pivot_wider(names_from = quantile,
+                          values_from = value)) |>
+  mutate(across(direction,
+                ~ str_to_title(.)),
+         across(c(year, direction),
+                as_factor),
+         across(direction,
+                ~ fct_relevel(.,
+                              "Up",
+                              after = 0)),
+         plot_date = ymd("20211231") + days(jday))
+
+direction_max_day <-
+  day_summ |>
+  nest(est = -c(year, direction)) |>
+  mutate(smooth_mod = map(est,
+                          .f = function(x) {
+                            loess(mean ~ jday,
+                                  data = x)
+                          }),
+         preds = map(smooth_mod,
+                     .f = function(x) {
+                       tibble(jday = seq(min(day_summ$jday),
+                                         max(day_summ$jday))) %>%
+                         bind_cols(tibble(pred = predict(x,
+                                           newdata = .)))
+                     })) |>
+  mutate(max_day = map_dbl(preds,
+                           .f = function(x) {
+                             x |>
+                               arrange(desc(pred)) |>
+                               slice(1) |>
+                               pull(jday)
+                           })) |>
+  mutate(max_date = ymd("20211231") + days(max_day))
+
+
+
+day_summ |>
+  ggplot(aes(x = plot_date,
+             y = mean,
+             color = direction,
+             fill = direction)) +
+  geom_ribbon(aes(ymin = `2.5%`,
+                  ymax = `97.5%`),
+              color = NA,
+              alpha = 0.2) +
+  geom_line() +
+  geom_smooth(se = F) +
+  geom_vline(data = direction_max_day,
+             aes(xintercept = max_date,
+                 color = direction),
+             linetype = 2) +
+  geom_vline(data = NULL,
+             xintercept = ymd("20220515"),
+             linetype = 1) +
+  geom_hline(yintercept = 0) +
+  scale_color_discrete_qualitative(palette = "Dark 2",
+                                   name = "Direction") +
+  scale_fill_discrete_qualitative(palette = "Dark 2",
+                                  name = "Direction") +
+
+  facet_wrap(~ year) +
+  labs(x = "Date",
+       y = "Daily Estimate")
+
 
 #---------------------------------------------
 first_date <- hr_periods |>
