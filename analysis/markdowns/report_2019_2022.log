@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 23.5) (preloaded format=pdflatex 2023.9.8)  6 OCT 2023 13:07
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 23.5) (preloaded format=pdflatex 2023.9.8)  11 OCT 2023 14:30
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1052,12 +1052,9 @@ File: ../figures/spp-pred-1.pdf Graphic file (type pdf)
 <use ../figures/spp-pred-1.pdf>
 Package pdftex.def Info: ../figures/spp-pred-1.pdf  used on input line 633.
 (pdftex.def)             Requested size: 433.63878pt x 433.63878pt.
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 667.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 666.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [17
@@ -1065,14 +1062,14 @@ pdfTeX warning (ext4): destination with the same identifier (name{figure.10}) h
 as been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.667 \FloatBarrier
-                    <../figures/spp-pred-1.pdf>]
-<../figures/up-marg-1.pdf, id=234, 433.62pt x 433.62pt>
+l.666 
+       <../figures/spp-pred-1.pdf>]
+<../figures/up-marg-1.pdf, id=233, 433.62pt x 433.62pt>
 File: ../figures/up-marg-1.pdf Graphic file (type pdf)
 <use ../figures/up-marg-1.pdf>
 Package pdftex.def Info: ../figures/up-marg-1.pdf  used on input line 697.
 (pdftex.def)             Requested size: 433.63878pt x 433.63878pt.
-<../figures/down-marg-1.pdf, id=235, 433.62pt x 433.62pt>
+<../figures/down-marg-1.pdf, id=234, 433.62pt x 433.62pt>
 File: ../figures/down-marg-1.pdf Graphic file (type pdf)
 <use ../figures/down-marg-1.pdf>
 Package pdftex.def Info: ../figures/down-marg-1.pdf  used on input line 703.
@@ -1085,12 +1082,6 @@ Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 707.
 [18
 pdfTeX warning (ext4): destination with the same identifier (name{table.9}) has
  been already used, duplicate ignored
-<argument> ...shipout:D \box_use:N \l_shipout_box 
-                                                  \__shipout_drop_firstpage_...
-l.707 \FloatBarrier
-                   
-pdfTeX warning (ext4): destination with the same identifier (name{table.10}) ha
-s been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
 l.707 \FloatBarrier
@@ -1119,7 +1110,7 @@ as been already used, duplicate ignored
                                                   \__shipout_drop_firstpage_...
 l.707 \FloatBarrier
                     <../figures/down-marg-1.pdf>]
-<../figures/redd-fig-1.pdf, id=273, 433.62pt x 361.35pt>
+<../figures/redd-fig-1.pdf, id=272, 433.62pt x 361.35pt>
 File: ../figures/redd-fig-1.pdf Graphic file (type pdf)
 <use ../figures/redd-fig-1.pdf>
 Package pdftex.def Info: ../figures/redd-fig-1.pdf  used on input line 732.
@@ -1130,7 +1121,7 @@ Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 736.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [21
-pdfTeX warning (ext4): destination with the same identifier (name{table.11}) ha
+pdfTeX warning (ext4): destination with the same identifier (name{table.10}) ha
 s been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
@@ -1175,11 +1166,11 @@ LaTeX Warning: There were multiply-defined labels.
 
  ) 
 Here is how much of TeX's memory you used:
- 15776 strings out of 475247
- 252895 string characters out of 5756377
+ 15771 strings out of 475247
+ 252843 string characters out of 5756377
  1985801 words of memory out of 5000000
  36769 multiletter control sequences out of 15000+600000
- 620198 words of font info for 151 fonts, out of 8000000 for 9000
+ 620032 words of font info for 149 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  77i,15n,81p,1718b,575s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx10
@@ -1192,9 +1183,9 @@ ic/lm/lmr7.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/pub
 lic/lm/lmr8.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/pu
 blic/lm/lmri10.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1
 /public/lm/lmsy10.pfb>
-Output written on report_2019_2022.pdf (25 pages, 2339432 bytes).
+Output written on report_2019_2022.pdf (25 pages, 2339429 bytes).
 PDF statistics:
- 440 PDF objects out of 1000 (max. 8388607)
- 98 named destinations out of 1000 (max. 500000)
+ 439 PDF objects out of 1000 (max. 8388607)
+ 97 named destinations out of 1000 (max. 500000)
  35031 words of extra memory for PDF output out of 35830 (max. 10000000)
 

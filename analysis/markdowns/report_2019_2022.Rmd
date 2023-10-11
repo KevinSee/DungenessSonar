@@ -18,18 +18,6 @@ institute:
   - wdfw: Washington Department of Fish & Wildlife
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output: 
-    bookdown::pdf_document2:
-      keep_tex: FALSE
-      fig_caption: yes
-      fig_height: 5
-      fig_width: 6
-      toc: yes
-      includes:
-        in_header: ../templates/header_WDFW.tex
-      pandoc_args:
-      - --lua-filter=../templates/scholarly-metadata.lua
-      - --lua-filter=../templates/author-info-blocks2.lua
-      - --lua-filter=../templates/pagebreak.lua
     wdfwTemplates::wdfw_html_format2:
       fig_caption: yes
       fig_height: 4
@@ -42,6 +30,18 @@ output:
       pandoc_args:
       - --lua-filter=../templates/scholarly-metadata.lua
       - --lua-filter=../templates/author-info-blocks.lua
+      - --lua-filter=../templates/pagebreak.lua
+    bookdown::pdf_document2:
+      keep_tex: FALSE
+      fig_caption: yes
+      fig_height: 5
+      fig_width: 6
+      toc: yes
+      includes:
+        in_header: ../templates/header_WDFW.tex
+      pandoc_args:
+      - --lua-filter=../templates/scholarly-metadata.lua
+      - --lua-filter=../templates/author-info-blocks2.lua
       - --lua-filter=../templates/pagebreak.lua
     bookdown::word_document2:
       fig_caption: yes
@@ -1251,8 +1251,7 @@ sonar_pred_spp |>
                         "Total Sthd")),
         booktabs = T,
         linesep = "",
-        # caption = "Test") |> 
-        caption = "Number of fish observed moving downstream or upstream (n Fish), less than or greater than 67 cm, and whether they were likely (> 50\\% probability) to be a steelhead. Totals within each movement and size group are shown (n Sthd) as well as totals for each year by direction (Total Sthd).") |>
+        caption = "Number of fish observed moving downstream or upstream (n Fish), less than or greater than 67 cm, and whether they were likely (> 50% probability) to be a steelhead according to the species composition GAM. Totals within each movement and size group are shown (n Sthd) as well as totals for each year by direction (Total Sthd). Note that for fish greater than 67 cm, we assumed they were all steelhead, regardless of the GAM predictions.") |>
   kable_styling(latex_options = c("scale_down",
                                   "hold_position")) |> 
   collapse_rows(c(1)) |> 
