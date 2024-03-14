@@ -1,7 +1,7 @@
 # Author: Kevin See
 # Purpose: Fit species composition data
 # Created: 4/25/23
-# Last Modified: 7/19/23
+# Last Modified: 3/8/24
 # Notes:
 
 #-----------------------------------------------------------------
@@ -32,6 +32,17 @@ fl_mod <-
         s(jday, k = 5, m = 2, bs = "tp"),
       data = spp_fl,
       family = binomial)
+
+# fl_mod <-
+#   gam(spp_fct ~ s(fl_z, k = 5, m = 2, bs = "tp") +
+#         s(jday, year, bs = "fs"),
+#       data = spp_fl |>
+#         mutate(year = year(date),
+#                across(year,
+#                       as.factor)),
+#       family = binomial)
+
+
 
 # fl_mod <-
 #   # gam(spp_fct ~ s(fl_z, jday, k = 5, m = 2, bs = "tp"),

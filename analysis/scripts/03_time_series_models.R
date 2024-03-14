@@ -1,7 +1,7 @@
 # Author: Kevin See
 # Purpose: Fit time-series models
 # Created: 4/24/23
-# Last Modified: 7/3/23
+# Last Modified: 3/8/24
 # Notes:
 
 #-----------------------------------------------------------------
@@ -46,24 +46,28 @@ half_hr_periods <- half_hr_periods |>
          half_hr_interval = interval(start = date_time,
                                      end = date_time + minutes(29) + seconds(59)))
 
-sthd_cnts <- sonar_sthd |>
+sthd_cnts <-
+  sonar_sthd |>
   mutate(across(time,
                 ~ if_else(is.na(.),
                           hour,
                           .)),
-         dt = date + time,
-         across(dt,
-                ~ ymd_hms(as.character(.), tz = "America/Los_Angeles"))) |>
+         dt = date + time) |>
   filter(!is.na(direction),
          direction %in% c("downstream",
                           "upstream")) |>
   mutate(half_hr_int = NA_real_)
 
+tz(sthd_cnts$dt) = "America/Los_Angeles"
+
 # which interval is each observation in?
-for(i in 1:nrow(sthd_cnts)) {
-  sthd_cnts$half_hr_int[i] = which(sthd_cnts$dt[i] %within% half_hr_periods$half_hr_interval)
-}
-rm(i)
+sthd_cnts <-
+  sthd_cnts |>
+  mutate(half_hr_int = map_int(dt,
+                               .f = function(x) {
+                                 min(which(x %within% half_hr_periods$half_hr_interval))
+                               },
+                               .progress = T))
 
 
 ts_half_hr <- half_hr_periods |>
@@ -119,7 +123,8 @@ ts_df <- mod_df |>
                           seasonal = F,
                           allowdrift = F,
                           stepwise = F,
-                          ic = "aicc"),
+                          ic = "aicc",
+                          .progress = T),
          order = map_chr(auto_arima,
                          .f = function(x) {
                            arimaorder(x) %>%
@@ -137,7 +142,8 @@ ts_df <- mod_df |>
                                         smooth = T) %>%
                                 as_tibble() %>%
                                 rename(kalman_pred = x)
-                            }),
+                            },
+                            .progress = T),
          # predict based on linear interpolation
          lin_preds = map(ts,
                          .f = function(x) {
@@ -145,7 +151,8 @@ ts_df <- mod_df |>
                                             option = "linear") %>%
                              as_tibble() %>%
                              rename(lin_pred = x)
-                         }),
+                         },
+                         .progress = T),
          # predict based on moving average
          ma_preds = map(ts,
                         .f = function(x) {
@@ -154,7 +161,8 @@ ts_df <- mod_df |>
                           ) %>%
                             as_tibble() %>%
                             rename(ma_pred = x)
-                        }))
+                        },
+                        .progress = T))
 
 #-----------------------------------------------------------------
 # save some objects
@@ -191,7 +199,7 @@ ts_df |>
   facet_wrap(~ direction + year,
              scales = "free")
 
-i = 1
+i = 8
 ggplot_na_imputations(ts_df$ts[[i]],
                       ts_df$kalman_preds[[i]])
 

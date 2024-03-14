@@ -1,7 +1,7 @@
 # Author: Kevin See
 # Purpose: Fit GAM to time-series with missing data
 # Created: 4/21/23
-# Last Modified: 7/19/23
+# Last Modified: 3/8/24
 # Notes:
 
 #-----------------------------------------------------------------
@@ -11,6 +11,7 @@ library(here)
 library(magrittr)
 library(janitor)
 library(lubridate)
+library(dataRetrieval)
 library(ggfortify)
 library(mgcv)
 library(tidymv) # to be replaced by tidygam at some point
@@ -294,6 +295,8 @@ up_mod <- gam(total_observed_hr ~
                 s(day_of_year, year, bs = "fs") +
                 offset(log(prop_hr_sampled)),
               family = nb,
+              # method = "REML",
+              optimizer = c("outer", "optim"),
               data = up_data)
 
 
@@ -859,18 +862,23 @@ ggsave(here("analysis/figures",
        bg = "transparent")
 
 #------------------------------------------------------------
-obs_vs_fit_p <- half_hr_est |>
+obs_fit_df <- half_hr_est |>
   inner_join(ts_half_hr |>
                filter(reviewed) |>
                select(date_time,
                       direction,
                       full_hr,
-                      n_fish)) |>
+                      n_fish),
+             by = join_by(date_time, direction))
+
+obs_vs_fit_p <- obs_fit_df |>
   ggplot(aes(x = n_fish,
-             y = mean,
+             y = `50%`,
              color = full_hr)) +
   geom_abline(linetype = 2) +
-  geom_point() +
+  geom_point(position = position_jitter(width = 0.2)) +
+  # geom_smooth(method = loess,
+  #             se = F) +
   scale_color_viridis_d(end = 0.8,
                         name = "Part of\nFull Hour\nReview?") +
   labs(x = "Observed",
@@ -885,6 +893,50 @@ ggsave(here("analysis/figures",
        width = 5,
        height = 5)
 
+# sum up at day scale
+obs_fit_df |>
+  mutate(date = floor_date(date_time, "days")) |>
+  group_by(date) |>
+  summarize(across(c(full_hr,
+                     mean,
+                     `50%`,
+                     n_fish),
+                   sum),
+            .groups = "drop") |>
+  ggplot(aes(x = n_fish,
+             y = `50%`)) +
+  geom_abline(linetype = 2) +
+  geom_point(position = position_jitter(width = 0.2)) +
+  labs(x = "Observed",
+       y = "Fitted")
+
+obs_fit_df |>
+  mutate(year = year(date_time),
+         across(year,
+                as_factor),
+         resid = n_fish - mean) |>
+  ggplot(aes(x = resid,
+             color = year,
+             fill = year)) +
+  geom_histogram(position = "dodge") +
+  geom_vline(xintercept = 0,
+             linetype = 2)
+
+obs_fit_df |>
+  mutate(year = year(date_time),
+         across(year,
+                as_factor),
+         resid = n_fish - mean) |>
+  ggplot(aes(x = mean,
+             y = resid)) +
+  geom_hline(yintercept = 0,
+             linetype = 2) +
+  geom_point() +
+  geom_smooth(method = loess,
+              color = "red",
+              se = F) +
+  labs(x = "Fitted",
+       y = "Residual")
 
 #-----------------------------------------------
 load(here("analysis/data/derived_data",

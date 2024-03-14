@@ -1,7 +1,7 @@
 # Author: Kevin See
 # Purpose: Read in data from SONAR
 # Created: 3/15/22
-# Last Modified: 7/19/23
+# Last Modified: 3/8/24
 # Notes:
 
 #-----------------------------------------------------------------
@@ -11,6 +11,7 @@ library(here)
 library(magrittr)
 library(janitor)
 library(lubridate)
+library(stringr)
 library(readxl)
 library(ggfortify)
 
@@ -32,7 +33,8 @@ sonar_raw <- read_csv(here("analysis/data/raw_data",
               mutate(across(Hour,
                             hms))) %>%
   bind_rows(read_csv(here("analysis/data/raw_data",
-                          "2020 sonar.csv")) %>%
+                          "2020 sonar.csv"),
+                     show_col_types = FALSE) %>%
               mutate(across(Hour,
                             ~ str_pad(.,
                                       width = 5,
@@ -40,18 +42,20 @@ sonar_raw <- read_csv(here("analysis/data/raw_data",
                                       pad = "0"))) %>%
               mutate(across(Hour,
                             hm)) %>%
-              rename(comments = `Comments/Notes`) %>%
+              rename(comments = "Comments/Notes") %>%
               clean_names("upper_camel")) %>%
   bind_rows(read_csv(here("analysis/data/raw_data",
-                          "2021 sonar.csv")) %>%
+                          "2021 sonar.csv"),
+                     show_col_types = FALSE) %>%
               mutate(across(Hour,
                             ~ hm(paste(str_sub(., 1,2),
                                        str_sub(., 3, 4),
                                        sep = ":")))) %>%
-              rename(comments = `Comments/Notes`) %>%
+              rename(comments = "Comments/Notes") %>%
               clean_names("upper_camel")) %>%
   bind_rows(read_csv(here("analysis/data/raw_data",
-                          "2022 sonar.csv")) %>%
+                          "2022 sonar.csv"),
+                     show_col_types = FALSE) %>%
               mutate(across(
                 Hour,
                 ~ str_remove(., ":")
@@ -62,28 +66,55 @@ sonar_raw <- read_csv(here("analysis/data/raw_data",
                            str_sub(., 3,4),
                            sep = ":")))) %>%
               clean_names("upper_camel")) %>%
+  bind_rows(read_csv(here("analysis/data/raw_data",
+                          "2023 sonar.csv"),
+                     show_col_types = FALSE) %>%
+              mutate(across(
+                Hour,
+                ~ str_remove(., ":")
+              )) |>
+              mutate(across(
+                Hour,
+                ~ hm(paste(str_sub(., 1,2),
+                           str_sub(., 3,4),
+                           sep = ":")))) %>%
+              clean_names("upper_camel")) |>
   filter(!is.na(Year)) %>%
   mutate(across(Date,
                 mdy)) %>%
-  mutate(across(DataReviewed,
-                ~ recode(.,
-                         "No Data" = "No data"))) %>%
-  mutate(across(DataRecorded,
-                ~ recode(.,
-                         "No Data" = "No data",
-                         "full" = "Full"))) %>%
-  mutate(across(Time,
-                ~ recode(.,
-                         "No Data" = "No data",
-                         "no fish" = "No fish",
-                         "No Fish" = "No fish")),
-         Time = if_else(str_detect(Comments, "No data"),
-                        "No data",
-                        Time),
+  mutate(across(c(DataReviewed,
+                  DataRecorded,
+                  Time),
+                str_to_sentence),
          across(Direction,
+                str_to_lower),
+         across(DataReviewed,
                 ~ recode(.,
-                         "Downstream" = "downstream",
-                         "Upstream" = "upstream"))) %>%
+                         "No review" = "Not reviewed"))) |>
+  mutate(across(Time,
+                ~ if_else(str_detect(Comments, "No data"),
+                          "No data",
+                          .))) |>
+  # mutate(across(DataReviewed,
+  #               ~ recode(.,
+  #                        "No Data" = "No data"))) %>%
+  # mutate(across(DataRecorded,
+  #               ~ recode(.,
+  #                        "No Data" = "No data",
+  #                        "full" = "Full",
+  #                        "Poor Image" = "Poor image"))) %>%
+  # mutate(across(Time,
+  #               ~ recode(.,
+  #                        "No Data" = "No data",
+  #                        "no fish" = "No fish",
+  #                        "No Fish" = "No fish")),
+  #        Time = if_else(str_detect(Comments, "No data"),
+  #                       "No data",
+  #                       Time),
+  #        across(Direction,
+  #               ~ recode(.,
+  #                        "Downstream" = "downstream",
+  #                        "Upstream" = "upstream"))) %>%
   mutate(across(DataRecorded,
                 ~ if_else(. == "None" & (Time == "No data" | is.na(Time)),
                           "No data",
@@ -95,6 +126,9 @@ sonar_raw <- read_csv(here("analysis/data/raw_data",
   clean_names() %>%
   mutate(date_time = date + hour) %>%
   arrange(date_time)
+
+
+
 
 # drop a couple records because they don't match
 # one upstream and one downstream fish recorded during the 2nd half hour,
@@ -462,8 +496,7 @@ spp_comp_2022 <- read_excel(here("analysis/data/raw_data",
   mutate(fork_length_cm = fork_length_mm / 10,
          poh_length_cm = poh_length_mm / 10)
 
-
-spp_comp <- spp_comp_2021 |>
+spp_comp_old <- spp_comp_2021 |>
   bind_rows(spp_comp_2022 |>
               filter(!is.na(as.numeric(count)))) |>
   select(all_of(intersect(names(spp_comp_2022), names(spp_comp_2021)))) |>
@@ -494,8 +527,112 @@ spp_comp <- spp_comp_2021 |>
                           "Unmarked",
                           .)))
 
+# using new file from Kathryn Sutton
+spp_comp_file <- "Dungeness_sppcomp_data_2023_FINAL.xlsx"
+spp_comp_file <- "Dungeness_sppcomp_data_2023_FINAL_KSupdate03012024.xlsx"
+
+spp_comp <-
+  read_excel(here("analysis/data/raw_data",
+                  spp_comp_file),
+             "2023",
+             skip = 2) %>%
+  mutate(
+    across(
+      contains("(mm)"),
+      ~ as.numeric(str_remove(., "~"))),
+    across(
+      Count,
+      as.character
+    )) |>
+  rlang::set_names( ~ str_remove(., " \\(mm\\)$")) |>
+  bind_rows(read_excel(here("analysis/data/raw_data",
+                            spp_comp_file),
+                       "2022",
+                       skip = 2) |>
+              mutate(across(
+                contains("(mm)"),
+                ~ as.numeric(str_remove(., "~"))
+              )) |>
+              rename("Floy Tag #" = "Tag #",
+                     "Floy Tag Color" = "Tag Color") |>
+              rlang::set_names( ~ str_remove(., " \\(mm\\)$"))) %>%
+  bind_rows(read_excel(here("analysis/data/raw_data",
+                            spp_comp_file),
+                       "2021",
+                       skip = 2) |>
+              mutate(across(
+                c(contains("(mm)"),
+                  contains("Length"),
+                  contains("Height"),
+                  contains("Girth")),
+                ~ as.numeric(str_remove(., "~"))
+              )) |>
+              rename("Floy Tag #" = "Tag #",
+                     "Floy Tag Color" = "Tag Color") |>
+              rlang::set_names( ~ str_remove(., " \\(mm\\)$"))) %>%
+  clean_names() |>
+  rename(comments = condition_comments,
+         fork_length_mm = fork_length,
+         poh_length_mm = poh_length) |>
+  mutate(fork_length_cm = fork_length_mm / 10,
+         poh_length_cm = poh_length_mm / 10) |>
+  mutate(year = year(date)) |>
+  relocate(year, .before = 1) |>
+  relocate(fork_length_cm,
+           .after = "fork_length_mm") |>
+  relocate(poh_length_cm,
+           .after = "poh_length_mm") |>
+  mutate(across(gear,
+                str_to_lower),
+         across(gear,
+                ~ recode(.,
+                         "gn" = "gill net")),
+         across(site,
+                str_to_title),
+         across(site,
+                ~ str_replace_all(., "Usgs", "USGS")),
+         across(site,
+                ~ str_replace_all(., "Ds", "DS")),
+         across(site,
+                ~ str_replace_all(., "Us", "US")),
+
+         across(site,
+                ~ str_replace_all(., "Bt", "BT")),
+         across(site,
+                ~ str_replace_all(., "Rb", "RB")),
+         across(site,
+                ~ str_replace_all(., "Sh", "SH")),
+         across(site,
+                ~ str_replace_all(., "Gage", "Gauge")),
+         across(site,
+                ~ str_remove(., "\\.$")))
+
+
+
+# spp_comp |>
+#   filter(rmu < 6,
+#          month(date) <= 6) |>
+#   mutate(across(species,
+#                 str_to_sentence)) |>
+#   count(year, date, species,
+#         name = "new") |>
+#   filter(year %in% unique(spp_comp_old$year)) |>
+#   full_join(spp_comp_old |>
+#               filter((rmu < 6 | is.na(rmu)),
+#                      month(date) <= 6) |>
+#               count(year, date, species,
+#                     name = "old")) |>
+#   mutate(diff = new - old) |>
+#   arrange(date,
+#           species) |>
+#   # filter(is.na(old))
+#   # filter(is.na(new))
+#   filter(diff != 0)
+
+
 spp_fl <- spp_comp |>
-  filter(rml < 12,
+# spp_fl <- spp_comp_old |>
+  filter(rmu < 6,
          month(date) <= 6) |>
   select(date,
          species,
@@ -513,7 +650,11 @@ spp_fl <- spp_comp |>
          fl_sd = sd(fork_length_cm),
          fl_z = (fork_length_cm - fl_mean) / fl_sd)
 
-
+spp_fl |>
+  mutate(year = year(date)) |>
+  tabyl(species,
+        year) |>
+  adorn_totals("both")
 
 #--------------------------------------------------
 # save data
