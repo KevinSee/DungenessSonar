@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 23.5) (preloaded format=pdflatex 2023.9.8)  11 OCT 2023 14:30
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 23.5) (preloaded format=pdflatex 2023.9.8)  1 NOV 2023 12:23
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -797,11 +797,11 @@ Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 163.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [2]
-<../images/watershed_map.jpg, id=65, 385.44pt x 385.44pt>
-File: ../images/watershed_map.jpg Graphic file (type jpg)
-<use ../images/watershed_map.jpg>
-Package pdftex.def Info: ../images/watershed_map.jpg  used on input line 176.
-(pdftex.def)             Requested size: 385.43906pt x 385.43906pt.
+<../images/sonar_mapRKM.jpg, id=65, 433.62pt x 433.62pt>
+File: ../images/sonar_mapRKM.jpg Graphic file (type jpg)
+<use ../images/sonar_mapRKM.jpg>
+Package pdftex.def Info: ../images/sonar_mapRKM.jpg  used on input line 176.
+(pdftex.def)             Requested size: 422.80096pt x 422.80096pt.
 <../images/site_map.png, id=69, 421.575pt x 401.24907pt>
 File: ../images/site_map.png Graphic file (type png)
 <use ../images/site_map.png>
@@ -847,7 +847,7 @@ s been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
 l.249 \FloatBarrier
-                    <../images/watershed_map.jpg>]
+                    <../images/sonar_mapRKM.jpg>]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
 Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 249.
@@ -884,9 +884,12 @@ s been already used, duplicate ignored
                                                   \__shipout_drop_firstpage_...
 l.249 \FloatBarrier
                     <../images/setup_2019.jpg> <../figures/op-fig-1.pdf>]
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 272.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 274.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [7
@@ -894,13 +897,13 @@ pdfTeX warning (ext4): destination with the same identifier (name{table.1}) has
  been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.272 
+l.274 
       
 pdfTeX warning (ext4): destination with the same identifier (name{figure.6}) ha
 s been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.272 
+l.274 
        <../figures/review-fig-1.pdf>]
 LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 2
 80.
@@ -909,7 +912,7 @@ File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 305.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 320.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [8
@@ -917,20 +920,13 @@ pdfTeX warning (ext4): destination with the same identifier (name{table.2}) has
  been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.305 
-      {C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-ts
-1.enc}{C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-ma
-thsy.enc}]
-Overfull \hbox (10.85767pt too wide) in paragraph at lines 349--360
- [][] 
- []
-
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
+l.320 \end{table}
+                 {C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/enc/dvi
+ps/lm/lm-ts1.enc}{C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/enc/dvi
+ps/lm/lm-mathsy.enc}]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 363.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 347.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [9
@@ -938,106 +934,109 @@ pdfTeX warning (ext4): destination with the same identifier (name{table.3}) has
  been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.363 
-      ]
+l.347 T
+       o fill in the missing data from periods when the SONAR was not operat...
+]
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
-File: ../templates/wdfwlogo_clr.png Graphic file (type png)
-<use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 454.
-
-(pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
-[10
-pdfTeX warning (ext4): destination with the same identifier (name{table.4}) has
- been already used, duplicate ignored
-<argument> ...shipout:D \box_use:N \l_shipout_box 
-                                                  \__shipout_drop_firstpage_...
-l.454 
-      ]
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
-<../figures/cv-lgth-hist-1.pdf, id=155, 433.62pt x 361.35pt>
+<../figures/cv-lgth-hist-1.pdf, id=145, 433.62pt x 361.35pt>
 File: ../figures/cv-lgth-hist-1.pdf Graphic file (type pdf)
 <use ../figures/cv-lgth-hist-1.pdf>
-Package pdftex.def Info: ../figures/cv-lgth-hist-1.pdf  used on input line 486.
+Package pdftex.def Info: ../figures/cv-lgth-hist-1.pdf  used on input line 469.
 
 (pdftex.def)             Requested size: 433.61894pt x 361.34912pt.
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 493.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 474.
+
+(pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
+[10]
+File: ../templates/wdfwlogo_clr.png Graphic file (type png)
+<use ../templates/wdfwlogo_clr.png>
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 474.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [11
-pdfTeX warning (ext4): destination with the same identifier (name{table.5}) has
- been already used, duplicate ignored
-<argument> ...shipout:D \box_use:N \l_shipout_box 
-                                                  \__shipout_drop_firstpage_...
-l.493 
-      ]
-File: ../templates/wdfwlogo_clr.png Graphic file (type png)
-<use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 493.
-
-(pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
-[12
 pdfTeX warning (ext4): destination with the same identifier (name{figure.7}) ha
 s been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.493 
+l.474 
        <../figures/cv-lgth-hist-1.pdf>]
-<../figures/lgth-comp-fig-1.pdf, id=175, 433.62pt x 361.35pt>
+<../figures/lgth-comp-fig-1.pdf, id=170, 433.62pt x 361.35pt>
 File: ../figures/lgth-comp-fig-1.pdf Graphic file (type pdf)
 <use ../figures/lgth-comp-fig-1.pdf>
-Package pdftex.def Info: ../figures/lgth-comp-fig-1.pdf  used on input line 496
+Package pdftex.def Info: ../figures/lgth-comp-fig-1.pdf  used on input line 479
 .
 (pdftex.def)             Requested size: 433.61894pt x 361.34912pt.
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 523.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 506.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
-[13
-pdfTeX warning (ext4): destination with the same identifier (name{table.6}) has
+[12
+pdfTeX warning (ext4): destination with the same identifier (name{table.4}) has
  been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.523 \FloatBarrier
-                   
-pdfTeX warning (ext4): destination with the same identifier (name{table.7}) has
- been already used, duplicate ignored
-<argument> ...shipout:D \box_use:N \l_shipout_box 
-                                                  \__shipout_drop_firstpage_...
-l.523 \FloatBarrier
+l.506 \FloatBarrier
                    ]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 523.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 506.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
-[14
+[13
 pdfTeX warning (ext4): destination with the same identifier (name{figure.8}) ha
 s been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.523 \FloatBarrier
+l.506 \FloatBarrier
                     <../figures/lgth-comp-fig-1.pdf>]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 616.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 599.
+
+(pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
+[14
+pdfTeX warning (ext4): destination with the same identifier (name{table.5}) has
+ been already used, duplicate ignored
+<argument> ...shipout:D \box_use:N \l_shipout_box 
+                                                  \__shipout_drop_firstpage_...
+l.599 \end{longtable}
+                     
+pdfTeX warning (ext4): destination with the same identifier (name{table.6}) has
+ been already used, duplicate ignored
+<argument> ...shipout:D \box_use:N \l_shipout_box 
+                                                  \__shipout_drop_firstpage_...
+l.599 \end{longtable}
+                     ]
+File: ../templates/wdfwlogo_clr.png Graphic file (type png)
+<use ../templates/wdfwlogo_clr.png>
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 599.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [15]
-<../figures/fl-hist-1.pdf, id=202, 433.62pt x 289.08pt>
+<../figures/fl-hist-1.pdf, id=201, 433.62pt x 289.08pt>
 File: ../figures/fl-hist-1.pdf Graphic file (type pdf)
 <use ../figures/fl-hist-1.pdf>
-Package pdftex.def Info: ../figures/fl-hist-1.pdf  used on input line 620.
+Package pdftex.def Info: ../figures/fl-hist-1.pdf  used on input line 603.
 (pdftex.def)             Requested size: 433.63878pt x 289.09251pt.
+<../figures/spp-pred-1.pdf, id=204, 433.62pt x 433.62pt>
+File: ../figures/spp-pred-1.pdf Graphic file (type pdf)
+<use ../figures/spp-pred-1.pdf>
+Package pdftex.def Info: ../figures/spp-pred-1.pdf  used on input line 616.
+(pdftex.def)             Requested size: 433.63878pt x 433.63878pt.
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 628.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 649.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [16
@@ -1045,16 +1044,11 @@ pdfTeX warning (ext4): destination with the same identifier (name{figure.9}) ha
 s been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.628 
+l.649 
        <../figures/fl-hist-1.pdf>]
-<../figures/spp-pred-1.pdf, id=215, 433.62pt x 433.62pt>
-File: ../figures/spp-pred-1.pdf Graphic file (type pdf)
-<use ../figures/spp-pred-1.pdf>
-Package pdftex.def Info: ../figures/spp-pred-1.pdf  used on input line 633.
-(pdftex.def)             Requested size: 433.63878pt x 433.63878pt.
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 666.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 649.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [17
@@ -1062,33 +1056,33 @@ pdfTeX warning (ext4): destination with the same identifier (name{figure.10}) h
 as been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.666 
+l.649 
        <../figures/spp-pred-1.pdf>]
-<../figures/up-marg-1.pdf, id=233, 433.62pt x 433.62pt>
+<../figures/up-marg-1.pdf, id=232, 433.62pt x 433.62pt>
 File: ../figures/up-marg-1.pdf Graphic file (type pdf)
 <use ../figures/up-marg-1.pdf>
-Package pdftex.def Info: ../figures/up-marg-1.pdf  used on input line 697.
+Package pdftex.def Info: ../figures/up-marg-1.pdf  used on input line 680.
 (pdftex.def)             Requested size: 433.63878pt x 433.63878pt.
-<../figures/down-marg-1.pdf, id=234, 433.62pt x 433.62pt>
+<../figures/down-marg-1.pdf, id=233, 433.62pt x 433.62pt>
 File: ../figures/down-marg-1.pdf Graphic file (type pdf)
 <use ../figures/down-marg-1.pdf>
-Package pdftex.def Info: ../figures/down-marg-1.pdf  used on input line 703.
+Package pdftex.def Info: ../figures/down-marg-1.pdf  used on input line 686.
 (pdftex.def)             Requested size: 433.63878pt x 433.63878pt.
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 707.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 690.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [18
-pdfTeX warning (ext4): destination with the same identifier (name{table.9}) has
+pdfTeX warning (ext4): destination with the same identifier (name{table.8}) has
  been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.707 \FloatBarrier
+l.690 \FloatBarrier
                    ]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 707.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 690.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [19
@@ -1096,11 +1090,11 @@ pdfTeX warning (ext4): destination with the same identifier (name{figure.11}) h
 as been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.707 \FloatBarrier
+l.690 \FloatBarrier
                     <../figures/up-marg-1.pdf>]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 707.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 690.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [20
@@ -1108,28 +1102,22 @@ pdfTeX warning (ext4): destination with the same identifier (name{figure.12}) h
 as been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.707 \FloatBarrier
+l.690 \FloatBarrier
                     <../figures/down-marg-1.pdf>]
-<../figures/redd-fig-1.pdf, id=272, 433.62pt x 361.35pt>
+<../figures/redd-fig-1.pdf, id=271, 433.62pt x 361.35pt>
 File: ../figures/redd-fig-1.pdf Graphic file (type pdf)
 <use ../figures/redd-fig-1.pdf>
-Package pdftex.def Info: ../figures/redd-fig-1.pdf  used on input line 732.
+Package pdftex.def Info: ../figures/redd-fig-1.pdf  used on input line 717.
 (pdftex.def)             Requested size: 433.61894pt x 361.34912pt.
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 736.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 721.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
-[21
-pdfTeX warning (ext4): destination with the same identifier (name{table.10}) ha
-s been already used, duplicate ignored
-<argument> ...shipout:D \box_use:N \l_shipout_box 
-                                                  \__shipout_drop_firstpage_...
-l.736 \FloatBarrier
-                   ]
+[21]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 736.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 721.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [22
@@ -1137,23 +1125,23 @@ pdfTeX warning (ext4): destination with the same identifier (name{figure.13}) h
 as been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.736 \FloatBarrier
+l.721 \FloatBarrier
                     <../figures/redd-fig-1.pdf>]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 755.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 740.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [23]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 777.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 762.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [24]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 795.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 780.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [25] (report_2019_2022.aux)
@@ -1166,13 +1154,13 @@ LaTeX Warning: There were multiply-defined labels.
 
  ) 
 Here is how much of TeX's memory you used:
- 15771 strings out of 475247
- 252843 string characters out of 5756377
- 1985801 words of memory out of 5000000
- 36769 multiletter control sequences out of 15000+600000
- 620032 words of font info for 149 fonts, out of 8000000 for 9000
+ 15773 strings out of 475247
+ 252862 string characters out of 5756377
+ 1995801 words of memory out of 5000000
+ 36767 multiletter control sequences out of 15000+600000
+ 620328 words of font info for 152 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 77i,15n,81p,1718b,575s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 77i,16n,81p,1718b,575s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx10
 .pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmb
 x12.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/
@@ -1183,9 +1171,9 @@ ic/lm/lmr7.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/pub
 lic/lm/lmr8.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/pu
 blic/lm/lmri10.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1
 /public/lm/lmsy10.pfb>
-Output written on report_2019_2022.pdf (25 pages, 2339429 bytes).
+Output written on report_2019_2022.pdf (25 pages, 2598767 bytes).
 PDF statistics:
- 439 PDF objects out of 1000 (max. 8388607)
- 97 named destinations out of 1000 (max. 500000)
+ 436 PDF objects out of 1000 (max. 8388607)
+ 95 named destinations out of 1000 (max. 500000)
  35031 words of extra memory for PDF output out of 35830 (max. 10000000)
 
