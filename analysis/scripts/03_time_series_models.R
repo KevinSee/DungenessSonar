@@ -1,7 +1,7 @@
 # Author: Kevin See
 # Purpose: Fit time-series models
 # Created: 4/24/23
-# Last Modified: 3/8/24
+# Last Modified: 3/15/24
 # Notes:
 
 #-----------------------------------------------------------------
@@ -58,7 +58,7 @@ sthd_cnts <-
                           "upstream")) |>
   mutate(half_hr_int = NA_real_)
 
-tz(sthd_cnts$dt) = "America/Los_Angeles"
+# tz(sthd_cnts$dt) = "America/Los_Angeles"
 
 # which interval is each observation in?
 sthd_cnts <-
@@ -88,9 +88,18 @@ ts_half_hr <- half_hr_periods |>
                           0, .)))
 
 ts_half_hr |>
-  group_by(year) |>
+  group_by(year,
+           direction) |>
   summarize(across(n_fish,
-                   ~ sum(., na.rm = T)))
+                   ~ sum(., na.rm = T))) |>
+  pivot_wider(names_from = direction,
+              values_from = n_fish) |>
+  mutate(net = up - down)
+
+ts_half_hr |>
+  filter(!is.na(n_fish),
+         !reviewed) |>
+  as.data.frame()
 
 #-----------------------------------------------------------------
 # fit some time series models
@@ -137,6 +146,7 @@ ts_df <- mod_df |>
   # make predictions based on best ARIMA model
   mutate(kalman_preds = map(ts,
                             .f = function(x) {
+                              message("Making Kalman filter predictions.\n")
                               na_kalman(x,
                                         model = "auto.arima",
                                         smooth = T) %>%
@@ -147,6 +157,7 @@ ts_df <- mod_df |>
          # predict based on linear interpolation
          lin_preds = map(ts,
                          .f = function(x) {
+                           message("Making linear interpolations predictions.\n")
                            na_interpolation(x,
                                             option = "linear") %>%
                              as_tibble() %>%
@@ -156,6 +167,7 @@ ts_df <- mod_df |>
          # predict based on moving average
          ma_preds = map(ts,
                         .f = function(x) {
+                          message("Making moving average predictions.\n")
                           na_ma(x,
                                 k = 4,
                           ) %>%

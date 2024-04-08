@@ -1,7 +1,7 @@
 # Author: Kevin See
 # Purpose: Compare observers with Dungeness SONAR
 # Created: 7/3/23
-# Last Modified: 7/19/23
+# Last Modified: 3/19/24
 # Notes:
 
 #-----------------------------------------------------------------
@@ -36,6 +36,15 @@ mult_obs_df <- read_excel(here("analysis/data/raw_data",
                             "2022 shared sonar days.xlsx"),
                        skip = 4) |>
               clean_names()) |>
+  bind_rows(read_csv(here("analysis/data/raw_data",
+                            "2023 shared sonar days.csv"),
+                     show_col_types = F) |>
+              clean_names() |>
+              mutate(across(date, mdy),
+                     across(hour,
+                            ~ hms(as.character(.))),
+                     across(hour,
+                            ~ date + .))) |>
   mutate(date_time = ymd_hm(paste(year(date),
                                   month(date),
                                   day(date),

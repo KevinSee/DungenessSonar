@@ -1,7 +1,7 @@
 # Author: Kevin See
 # Purpose: Compare various estimates to redd-count based estimates
 # Created: 5/5/23
-# Last Modified: 5/5/23
+# Last Modified: 3/18/24
 # Notes:
 
 #-----------------------------------------------------------------
@@ -13,6 +13,7 @@ library(janitor)
 library(lubridate)
 library(readxl)
 library(mgcv)
+library(colorspace)
 
 theme_set(theme_bw())
 
@@ -29,6 +30,10 @@ load(here("analysis/data/derived_data",
           paste0("gam_",
                  str_replace(time_step, " ", "_"),
                  ".rda")))
+load(here("analysis/data/derived_data",
+          paste0("gam_preds_",
+                 str_replace(time_step, " ", "_"),
+                 ".rda")))
 
 day_draws <- read_rds(here("analysis/data/derived_data",
                            paste0("mcmc_draws_day_",
@@ -36,7 +41,7 @@ day_draws <- read_rds(here("analysis/data/derived_data",
                                   ".rds"))) |>
   pivot_wider(names_from = direction,
               values_from = value) |>
-  filter(draw != 359) |>
+  # filter(draw != 359) |>
   mutate(net = up - down) |>
   pivot_longer(cols = c(down,
                         up,
@@ -123,6 +128,9 @@ redd_est <- read_excel(here("analysis/supplementary-materials/redd_data",
   select(c(1,3)) |>
   rlang::set_names(c("year",
                      "redd_est")) |>
+  # got this number from file "Dungeness Steelhead 2023.xlsx" from Bethany
+  bind_rows(tibble(year = 2023,
+                   redd_est = 309)) |>
   # filter(year >= 2019) |>
   mutate(across(year,
                 ~ as.factor(as.character(.))))
@@ -241,6 +249,27 @@ comp_est |>
   labs(x = "Year",
        y = "Net Upstream Escapement")
 
+
+comp_est |>
+  ggplot(aes(x = redd_est,
+             y = median)) +
+  geom_abline(linetype = 2,
+              color = "gray") +
+  geom_errorbar(aes(ymin = `2.5%`,
+                    ymax = `97.5%`),
+                width = 0.1) +
+  geom_point() +
+  geom_smooth(method = lm,
+              formula = y ~ x - 1,
+              fullrange = T) +
+  scale_x_continuous(limits = c(0, 1000)) +
+  scale_y_continuous(limits = c(0, 3500))
+
+lm(median ~ redd_est - 1,
+   data = comp_est) |>
+  summary()
+
+
 #-----------------------------------------------------------------
 # make a plot
 yr_draws |>
@@ -250,8 +279,12 @@ yr_draws |>
              y = total,
              fill = year)) +
   geom_boxplot() +
+  scale_fill_discrete_qualitative(palette = "Dark 3",
+                                  name = "Year",
+                                  guide = "none") +
   # geom_violin(draw_quantiles = c(0.5)) +
-  geom_point(data = redd_est,
+  geom_point(data = redd_est |>
+               filter(as.numeric(as.character(year)) %in% yr_draws$year),
              aes(y = redd_est),
              color = "blue",
              size = 6) +

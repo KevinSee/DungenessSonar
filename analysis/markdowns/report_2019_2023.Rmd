@@ -1,6 +1,6 @@
 ---
 title: "Dungeness River Winter Steelhead SONAR-based Escapement Estimates"
-subtitle: "2019 - 2022"
+subtitle: "2019 - 2023"
 author:
   - Bethany Craig:
       email: Bethany.Craig@dfw.wa.gov
@@ -18,17 +18,15 @@ institute:
   - wdfw: Washington Department of Fish & Wildlife
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output: 
-    bookdown::pdf_document2:
-      keep_tex: FALSE
+    bookdown::word_document2:
       fig_caption: yes
-      fig_height: 5
+      fig_height: 4
       fig_width: 6
       toc: yes
-      includes:
-        in_header: ../templates/header_WDFW.tex
+      reference_docx: "../templates/WDFW Report Template.docx" # Insert path for the DOCX file
       pandoc_args:
       - --lua-filter=../templates/scholarly-metadata.lua
-      - --lua-filter=../templates/author-info-blocks2.lua
+      - --lua-filter=../templates/author-info-blocks.lua
       - --lua-filter=../templates/pagebreak.lua
     wdfwTemplates::wdfw_html_format2:
       fig_caption: yes
@@ -43,15 +41,17 @@ output:
       - --lua-filter=../templates/scholarly-metadata.lua
       - --lua-filter=../templates/author-info-blocks.lua
       - --lua-filter=../templates/pagebreak.lua
-    bookdown::word_document2:
+    bookdown::pdf_document2:
+      keep_tex: FALSE
       fig_caption: yes
-      fig_height: 4
+      fig_height: 5
       fig_width: 6
       toc: yes
-      reference_docx: "../templates/ReportTemplate.docx" # Insert path for the DOCX file
+      includes:
+        in_header: ../templates/header_WDFW.tex
       pandoc_args:
       - --lua-filter=../templates/scholarly-metadata.lua
-      - --lua-filter=../templates/author-info-blocks.lua
+      - --lua-filter=../templates/author-info-blocks2.lua
       - --lua-filter=../templates/pagebreak.lua
 bibliography:
   # - AUC.bib
@@ -102,9 +102,10 @@ options(knitr.kable.NA = '-')
 # what kind of document is being created?
 doc.type <- knitr::opts_knit$get('rmarkdown.pandoc.to')
 
-if(doc.type == 'docx') {
-  options(knitr.table.format = "pandoc")
-}
+if(!is.null(doc.type)) {
+  if(doc.type == 'docx') {
+    options(knitr.table.format = "pandoc")
+  }}
 
 ```
 
@@ -127,12 +128,16 @@ load(here("analysis/data/derived_data",
           paste0("gam_",
                  str_replace(time_step, " ", "_"),
                  ".rda")))
+load(here("analysis/data/derived_data",
+          paste0("gam_preds_",
+                 str_replace(time_step, " ", "_"),
+                 ".rda")))
 
 load(here("analysis/data/derived_data",
           "obs_compare.rda"))
 
 load(here("analysis/data/derived_data",
-                 "redd_comp.rda"))
+          "redd_comp.rda"))
 
 ```
 
@@ -140,16 +145,15 @@ load(here("analysis/data/derived_data",
 
 # Executive Summary
 
-This report contains methods and results of SONAR-based escapement estimates for winter steelhead on the Dungeness River from 2019-2022. WDFW deployed a multibeam SONAR unit in the lower Dungeness River during the majority of the steelhead return from either early February or early March through the end of June or July, 2018-2022. Although the SONAR was operated in 2018, we were not able to produce a SONAR-based escapement estimate for 2018 due to frequent milling behavior at the site, and limited data review. We initiated a sub-sampling protocol in 2019 to enable us to review the entire season of imagery, and this was continued in subsequent years. 
+This report contains methods and results of SONAR-based escapement estimates for winter steelhead on the Dungeness River from 2019-2023. WDFW deployed a multibeam SONAR unit in the lower Dungeness River during the majority of the steelhead return from either early February or early March through the end of June or July, 2018-2023. Although the SONAR was operated in 2018, we were not able to produce a SONAR-based escapement estimate for 2018 due to frequent milling behavior at the site, and limited data review. We initiated a sub-sampling protocol in 2019 to enable us to review the entire season of imagery, and this was continued in subsequent years. 
 
-To exclude similarly sized fish that were not steelhead from our SONAR counts, WDFW conducted weekly species composition sampling in 2021 and 2022 throughout the periods of SONAR operation. The majority of fish encountered were steelhead and bull trout and these species overlapped in length up to 67 cm. To exclude potential bull trout from the SONAR fish counts we fit a binomial GAM with a logit link, using splines of fork length and Julian day to predict the probability of a fish being a steelhead for fish measured as 67 cm or less. The probability of being a steelhead was greatest during March and April, and least in February and June when more bull trout were present. 
+To exclude similarly sized fish that were not steelhead from our SONAR counts, WDFW conducted weekly species composition sampling in 2021, 2022 and 2023 throughout the periods of SONAR operation. The majority of fish encountered were steelhead and bull trout and these species overlapped in length up to 67 cm. To exclude potential bull trout from the SONAR fish counts we fit a binomial GAM with a logit link, using splines of fork length and Julian day to predict the probability of a fish being a steelhead for fish measured as 67 cm or less. The probability of being a steelhead was greatest during March and April, and least in February and June when fewer steelhead were present. 
 
 To fill in the missing data from periods when the SONAR was not operating or the data had not been reviewed, we fit the fish count data with a negative binomial generalized additive model (GAM) with a log link function using hour of day, discharge, and Julian day-of-year as covariates. For both upstream and downstream moving fish, the model indicates that a greater number of steelhead will move during the night, especially in the late evening, compared to the daytime, and more will move when discharge flows are near 600 cfs. There is also a clear effect of day-of-year, with upstream numbers peaking near the beginning of April, while downstream numbers peak near the beginning of May, with some year-to-year variability in the run-timing curve. 
 
-To generate an annual estimate of escapement, we subtracted the total estimate of downstream moving fish from the total estimate of upstream moving fish prior to May 15th to prevent double counting milling fish. After May 15, we ignored downstream moving fish and only estimated upstream moving fish, under the assumption that downstream moving fish are steelhead kelts that have spawned and therefore should not be subtracted from our escapement estimates. Total SONAR-based escapement estimates for steelhead ranged from 646 (CI 626 – 668) in 2021 to 1,101 (CI 1012 – 1196) in 2020. The SONAR-based estimates were consistently roughly twice the redd-based estimates.
+To generate an annual estimate of escapement, we subtracted the total estimate of downstream moving fish from the total estimate of upstream moving fish prior to May 15th to prevent double counting milling fish. After May 15, we ignored downstream moving fish and only estimated upstream moving fish, under the assumption that downstream moving fish are steelhead kelts that have spawned and therefore should not be subtracted from our escapement estimates. Total SONAR-based escapement estimates for steelhead ranged from `r round_half_up(min(comp_est$median))` (CI `r paste(round(as_vector(comp_est[which.min(comp_est$median), c(5,6)])), collapse = " - ") `) in `r comp_est$year[which.min(comp_est$median)]` to `r prettyNum(round_half_up(max(comp_est$median)), big.mark = ",")` (CI `r paste(prettyNum(round(as_vector(comp_est[which.max(comp_est$median), c(5,6)])), big.mark = ","), collapse = " - ") `) in `r comp_est$year[which.max(comp_est$median)]`. The SONAR-based estimates were consistently roughly twice the redd-based estimates.
 
 We learned some important lessons over the first 5 years of SONAR operation on the Dungeness River. Site selection is important and may need to change if fish aren’t actively migrating past the site. For future seasons we recommend deploying the SONAR in January, to capture the start of the steelhead return. We also recommend considering re-designing the species composition sampling to attempt to exclude holding fish, and to investigate how species composition changes with hour of day, since returning steelhead appear to move primarily in the late evening. Finally, we recommend investigating methods to account for kelts that are less simplistic than the methods we used here.
-
 
 # Introduction
 
@@ -157,13 +161,13 @@ Dungeness River steelhead (*Oncorhynchus mykiss*) are part of the Puget Sound St
 
 The Dungeness River is snowmelt dominated and glacially influenced, with headwaters in the Olympic Mountains [@Myers2015]. Glacial sediments and springtime snowmelt can lead to high, turbid water and unsafe survey conditions, presenting a challenge to steelhead redds surveys in the basin. In most years it is not possible to survey for steelhead through the entirety of the spawning season, and in some years poor survey conditions prevent an adequate number of surveys from being completed to produce an estimate of escapement based on redd counts. Current methods use a run-timing curve from 2015, a low water year in which redds surveys could be conducted through the entire spawning period, to expand the current year’s redd counts to generate an escapement estimate. However, this method does not account for the annual variation in flows and spawn timing, which limits accuracy of abundance estimates. Accurate estimates of steelhead escapement in the Dungeness are important to monitor the abundance and health of the population, to evaluate progress towards ESA recovery goals, and to manage potential future fisheries.
 
-SONAR may provide an alternative method for steelhead enumeration and run timing in a dynamic, turbid snow-melt system like the Dungeness watershed. SONAR can be operated in a range of flow conditions and is not limited by turbidity. Since 2018 the Washington Department of Fish and Wildlife (WDFW) has operated a stationary multi-beam SONAR unit in the lower Dungeness River to enumerate and gather run-timing information on Dungeness steelhead. This is our first report on the SONAR project, covering the 2018-2022 seasons.
+SONAR may provide an alternative method for steelhead enumeration and run timing in a dynamic, turbid snow-melt system like the Dungeness watershed. SONAR can be operated in a range of flow conditions and is not limited by turbidity. Since 2018 the Washington Department of Fish and Wildlife (WDFW) has operated a stationary multi-beam SONAR unit in the lower Dungeness River to enumerate and gather run-timing information on Dungeness steelhead. This is our first report on the SONAR project, covering the 2018-2023 seasons.
 
 # Methods
 
 ## SONAR operation
 
-We deployed the ARIS 1800 Explorer, manufactured by Sound Metrics, of Bellevue, Washington in the lower Dungeness River during the majority of the steelhead run from 2018 through 2022 (Figure \@ref(fig:wtsd-map)). The ARIS 1800 uses 96 beams at 1.1/1.8 megahertz (Mhz) to project a 28-degree acoustic wedge. The SONAR unit was adjusted to have a pitch of 3.5 degrees to -8 degrees to ensonify the entire water column and channel. The unit was checked daily and adjusted as necessary to maintain full ensonification of the channel. Imagery was continuously recorded 24 hours a day, and saved in 30-minute files, so that 48 individual files were recorded for each full day of operation.
+We deployed the ARIS 1800 Explorer, manufactured by Sound Metrics, of Bellevue, Washington in the lower Dungeness River during the majority of the steelhead run from 2018 through 2023 (Figure \@ref(fig:wtsd-map)). The ARIS 1800 uses 96 beams at 1.1/1.8 megahertz (Mhz) to project a 28-degree acoustic wedge. The SONAR unit was adjusted to have a pitch of 3.5 degrees to -8 degrees to ensonify the entire water column and channel. The unit was checked daily and adjusted as necessary to maintain full ensonification of the channel. Imagery was continuously recorded 24 hours a day, and saved in 30-minute files, so that 48 individual files were recorded for each full day of operation.
 
 ```{r wtsd-map, out.width = "90%", fig.align="center", fig.cap = "Location of SONAR in Dungeness River basin. Steelhead distribution shown in dark gray."}
 include_graphics(here("analysis/images/sonar_mapRKM.jpg"))
@@ -173,7 +177,7 @@ In 2018 the SONAR unit was deployed at approximately at river kilometer (RKM) 0.
 
 Fish frequently milled or held in front of this SONAR site, which made counting fish passage difficult. As a result, in 2019, the SONAR site was moved upstream to approximately RKM 0.5, to a site with higher velocity, past which fish actively migrated (Figure \@ref(fig:setup-2019)). This site was easily accessible from the field trailer site, which enabled the unit to be directly connected and powered by trailer power, and any adjustments to the SONAR settings to be accomplished in the dry, safe comfort of the trailer. 
 
-```{r site-map, out.width = "70%", fig.align="center", fig.cap = "Location of the SONAR site in the lower Dungeness River in 2018 (white) and 2019-2022 (striped)."}
+```{r site-map, out.width = "70%", fig.align="center", fig.cap = "Location of the SONAR site in the lower Dungeness River in 2018 (white) and 2019-2023 (striped)."}
 include_graphics(here("analysis/images/site_map.png"))
 ```
 
@@ -208,7 +212,7 @@ ops_df |>
   clean_names("title") |> 
   kable(booktabs = T,
         linesep = "",
-        caption = "SONAR operational dates on the Dungeness River, 2018 - 2022.") |> 
+        caption = "SONAR operational dates on the Dungeness River, 2018 - 2023.") |> 
   kable_styling(latex_options = c("hold_position"))
 
 
@@ -264,7 +268,7 @@ half_hr_periods %>%
 ```
 
 \FloatBarrier
- 
+
 ## Data Processing
 
 In 2018 we reviewed both 30-minute files in each hour, for a total of 48 files per 24-hour period. Data review for 2018 was time-consuming and onerous due to the number of fish milling in front of the SONAR, and we were only able to review 29% of the recorded SONAR imagery over the season (Table \@ref(tab:pct-ops)). Because of the immense quantity of SONAR files, and the amount of time it took to process and review each 30-minute file, in 2019 we initiated a subsampling design to enable the project team to review portions of nearly every day in the entire period of steelhead passage. In 2019 - 2023 the first 30 minutes of each hour were processed and reviewed for fish migration, while a subset of days was fully reviewed (60 minutes of each hour) as time allowed. Another subset of days was double, or triple, reviewed to compare fish counts and lengths among each year’s two or three data reviewers. Table \@ref(tab:pct-ops) shows what percentage of the total hours were reviewed each year (from Feb 1 - June 15), and what percentage of that period the SONAR was operating and collecting data.
@@ -323,7 +327,7 @@ half_hr_periods |>
                        starts_with("pct")) |> 
   clean_names("title") |>
   rlang::set_names(function(x) {
-      str_replace(x, "^N ", "n ")
+    str_replace(x, "^N ", "n ")
   }) |> 
   kable(booktabs = T,
         linesep = "",
@@ -476,19 +480,38 @@ obs_day_cor <-
                                     obs_2_fish = sum(cnt, na.rm = T),
                                     .groups = "drop") |> 
                           add_column(obs_1 = "CS",
+                                     .before = "obs_2")) |> 
+              bind_rows(mult_obs_df |> 
+                          group_by(direction,
+                                   date) |> 
+                          count(observer) |> 
+                          pivot_wider(names_from = observer,
+                                      values_from = n) |> 
+                          pivot_longer(cols = -c(date, 
+                                                 direction, 
+                                                 AB),
+                                       names_to = "observer",
+                                       values_to = "cnt") |> 
+                          filter(!is.na(cnt)) |> 
+                          group_by(direction,
+                                   obs_2 = observer) |> 
+                          summarize(obs_1_fish = sum(AB, na.rm = T),
+                                    obs_2_fish = sum(cnt, na.rm = T),
+                                    .groups = "drop") |> 
+                          add_column(obs_1 = "AB",
                                      .before = "obs_2")),
             by = join_by(direction, obs_1, obs_2)) |> 
   relocate(r,
            .after = obs_2_fish)
-  
+
 
 ```
 
 ```{r}
 day_cnts <- mult_obs_fish |>
   group_by(year, date,
-         direction,
-         observer) |> 
+           direction,
+           observer) |> 
   summarize(n_cnts = n_distinct(fish_num),
             .groups = "drop") |> 
   pivot_wider(names_from = observer,
@@ -524,13 +547,13 @@ for(i in unique(mult_obs_fish$observer)) {
                    values_to = "cnts")
     
     grp = grp + 1
-      
+    
   }
 }  
 
 obs_cnt_comp <- map_df(comp_list,
-       .f = identity,
-       .id = "grp") |> 
+                       .f = identity,
+                       .id = "grp") |> 
   arrange(desc(direction),
           year) |> 
   pivot_wider(names_from = observer,
@@ -592,7 +615,7 @@ mult_obs_fish |>
 
 ## Species Composition Sampling
 
-Species composition sampling was conducted weekly, as river conditions allowed, during the period of SONAR operations in 2021, 2022 and 2023. A fine monofilament gill net 5.5 meters wide by 2.4 meters deep with a 5-cm mesh (10-cm stretch) was drifted through all sampleable habitat in the lower river from RKM 5.3 to RKM 0.8 (2021) or RKM 1.3 (2022-). In habitat where it wasn't possible to use a net (e.g. too much wood), hook and line sampling occurred. Encountered fish were removed immediately from the net, sedated in a solution of tricaine mesylate (MS-222), and sampled for species, origin, length, sex, scales, and DNA. Captured steelhead were assessed for kelt status. 
+Species composition sampling was conducted weekly, as river conditions allowed, during the period of SONAR operations in 2021, 2022 and 2023. A fine monofilament gill net 5.5 meters wide by 2.4 meters deep with a 5-cm mesh (10-cm stretch) was drifted through all sampleable habitat in the lower river from RKM 5.3 to RKM 0.8 (2021) or RKM 1.3 (2022 - 2023). In habitat where it wasn't possible to use a net (e.g. too much wood), hook and line sampling occurred. Encountered fish were removed immediately from the net, sedated in a solution of tricaine mesylate (MS-222), and sampled for species, origin, length, sex, scales, and DNA. Captured steelhead were assessed for kelt status. 
 
 No regular species composition sampling was conducted in 2018, 2019, or 2020. In 2019, three sampling efforts targeting bull trout (*Salvelinus confluentus*) were conducted once per week in June at sites throughout the Dungeness and Gray Wolf rivers.
 
@@ -615,9 +638,9 @@ time_step = c("30 min",
               "1 hour")[1]
 
 day_draws <- read_rds(here("analysis/data/derived_data",
-                          paste0("mcmc_draws_day_",
-                                 str_replace(time_step, " ", "_"),
-                                 ".rds"))) |> 
+                           paste0("mcmc_draws_day_",
+                                  str_replace(time_step, " ", "_"),
+                                  ".rds"))) |> 
   pivot_wider(names_from = direction,
               values_from = value) |> 
   filter(draw != 359) |> 
@@ -654,7 +677,7 @@ yr_draws_up <- day_draws |>
   summarize(across(value,
                    sum),
             .groups = "drop")
-  
+
 yr_draws <- yr_draws_net |> 
   bind_rows(yr_draws_up) |> 
   pivot_wider(names_from = direction,
@@ -719,7 +742,7 @@ yr_draws_net <- yr_draws |>
   mutate(across(direction,
                 ~ factor(.,
                          levels = c("up", "down", "net"))))
-  
+
 yr_est <- yr_draws_net |>
   group_by(year,
            direction) |>
@@ -786,11 +809,11 @@ obs_cnt_comp |>
   kable_styling(latex_options = c("hold_position")) |> 
   row_spec(row = sum(obs_cnt_comp$direction == "upstream"),
            hline_after = T) |> 
-  collapse_rows(2)
-  
+  collapse_rows(c(1,2))
+
 ```
 
-The correlation coefficient between each pair of observers, by direction, is show in Table \@ref(tab:obs-corr). Except for observer GB, Correlations for upstream moving fish were all greater than 0.95, while the correlation coefficients for downstream moving fish ranged from `r paste(round(range(obs_day_cor$r[obs_day_cor$direction == "downstream"]), 2), collapse = " to ")`. Several of the weakest correlations did correspond with lower numbers of observed fish. 
+The correlation coefficient between each pair of observers, by direction, is show in Table \@ref(tab:obs-corr). Except for observer GB, correlations for upstream moving fish were all greater than 0.95, while the correlation coefficients for downstream moving fish ranged from `r paste(round(range(obs_day_cor$r[obs_day_cor$direction == "downstream"]), 2), collapse = " to ")`. Several of the weakest correlations did correspond with lower numbers of observed fish. 
 
 ```{r obs-corr}
 obs_day_cor |>
@@ -807,10 +830,11 @@ obs_day_cor |>
         caption = "Correlation (r) between daily counts of upstream and downstream moving fish for periods that were reviewed by pairs of observers. The total number of days when each pair reviewed SONAR data is shown, as well as the total number of fish observed by each observer.") |> 
   kable_styling(latex_options = c("hold_position")) |> 
   row_spec(row = sum(obs_day_cor$direction == "upstream"),
-           hline_after = T)
+           hline_after = T) |> 
+  collapse_rows(1)
 ```
 
-For fish observed by multiple observers, the CVs of those multiple length measurements are displayed in Figure \@ref(fig:cv-lgth-hist). The mean CV of length measurements for upstream moving fish was 0.06, while it was 0.09 for downstream moving fish. 95% of the upstream CVs were smaller than 0.15 (considered a reference point for precise measurements), while 84% of the downstream CVs met this criterion. 
+For fish observed by multiple observers, the CVs of those multiple length measurements are displayed in Figure \@ref(fig:cv-lgth-hist). The mean CV of length measurements for upstream moving fish was 0.09, while it was 0.10 for downstream moving fish. 86% of the upstream CVs were smaller than 0.15 (considered a reference point for precise measurements), while 78% of the downstream CVs met this criterion. 
 
 ```{r cv-lgth-hist, fig.cap = "Coefficient of variation (CV) of length measurements for individual fish across multiple observers, colored by year and faceted by direction of movement. Dashed lines indicate the mean CV for that group, while the solid black line is a reference of 0.15."}
 mult_obs_fish |>
@@ -848,9 +872,9 @@ mult_obs_fish |>
 
 ```
 
-Histograms of length measurement bias, relative to observer AS, are shown in Figure \@ref(fig:lgth-comp-fig). Summary statistics of the same comparison are depicted in Table \@ref(tab:lgth-comp-tab). All observers had larger variability in their measurements of downstream moving fish compared to observer AS, as seen in RMSE, MAE and MAPE values. Two observers (BT and GB) had a positive mean bias relative to observer AS for upstream fish and BT also had a positive mean bias for downstream fish, meaning they often measured the same fish as being slightly larger than AS. The other observers had negative mean bias, meaning they measured the same fish as being smaller compared to observer AS. This was more pronounced for downstream moving fish, up to an mean difference of nearly -12.4 cm per fish for observer BC (although that observer only measured four downstream fish). 
+Histograms of length measurement bias, relative to observer AS, are shown in Figure \@ref(fig:lgth-comp-fig). Summary statistics of the same comparison are depicted in Table \@ref(tab:lgth-comp-tab). All observers had larger variability in their measurements of downstream moving fish compared to observer AS, as seen in RMSE, MAE and MAPE values. Three observers (AB, BT and GB) had a positive mean bias relative to observer AS for upstream fish and AB and BT also had a positive mean bias for downstream fish, meaning they often measured the same fish as being slightly larger than AS. The other observers had negative mean bias, meaning they measured the same fish as being smaller compared to observer AS. This was more pronounced for downstream moving fish, up to an mean difference of nearly -12.4 cm per fish for observer BC (although that observer only measured four downstream fish). 
 
-The mean absolute percent error (MAPE) ranged from 6.7 - 12.3% for upstream moving fish and from 8.9 - 18.2% for downstream moving fish. To put that on the scale of fish lengths (centimeters), the root mean square error (RMSE) ranged from 6.7 - 9.6 cm for upstream moving fish and 6.8 - 17 cm for downstream moving fish.
+The mean absolute percent error (MAPE) ranged from 6.7 - 12.3% for upstream moving fish and from 8.9 - 18.2% for downstream moving fish. To put that on the scale of fish lengths (centimeters), the root mean square error (RMSE) ranged from 6.7 - 9.9 cm for upstream moving fish and 6.8 - 17 cm for downstream moving fish.
 
 ```{r lgth-comp-fig, fig.cap = "Histograms and density plots showing the bias of length measurements, relative to observer AS, colored by observer and faceted by direction and year."}
 as_length_comp |> 
@@ -902,16 +926,16 @@ as_length_comp |>
         linesep = "",
         caption = "Summary statistics comparing length measurements of different observers with those made by observer AS.") |> 
   kable_styling(latex_options = c("hold_position")) |> 
-  row_spec(row = 4,
+  row_spec(row = 7,
            hline_after = T)
-  
+
 ```
 
 \FloatBarrier
 
 ## Species Composition
 
-`r n_distinct(spp_fl$date) |> as.english() |> str_to_sentence()` species composition sampling events were conducted between early February and late June across 2021, 2022 and 2023. Steelhead and bull trout were the primary species encountered during sampling. The majority of captured steelhead were natural-origin; three hatchery-origin steelhead were captured in early April 2021, and three hatchery-origin steelhead were captured in 2022 - two in mid-March and one in late May. Steelhead kelts were encountered starting in early June 2021, in May 2022 and mid-April 2023 (Table \@ref(tab:spp-cnts-date)). From the species composition netting, there are `r nrow(spp_fl)` fish to use in this model. The lengths of these fish can be seen in Figure \@ref(fig:fl-hist). 
+`r n_distinct(spp_fl$date) |> as.english() |> str_to_sentence()` species composition sampling events were conducted between early February and late June across 2021, 2022 and 2023. Steelhead and bull trout were the primary species encountered during sampling. The majority of captured steelhead were natural-origin. Two hatchery-origin steelhead were captured in early April 2021, two hatchery-origin steelhead were captured in mid-March of 2022, and three hatchery-origin steelhead were captured in 2023: one in early March and two in late April . Steelhead kelts were encountered starting in May 2022 and mid-April 2023, while no kelts were caught in 2021 (Table \@ref(tab:spp-cnts-date)). From the species composition netting, there are `r nrow(spp_fl)` fish to use in this model. The lengths of these fish can be seen in Figure \@ref(fig:fl-hist). 
 
 ```{r spp-cnts-yr, eval = F}
 spp_fl |> 
@@ -923,99 +947,30 @@ spp_fl |>
               values_fill = 0) |> 
   kable(booktabs = T,
         linesep = "",
-        caption = "Counts of species encountered during species composition sampling in the lower Dungeness River in 2021 and 2022.") |> 
+        caption = "Counts of species encountered during species composition sampling in the lower Dungeness River in 2021-2023.") |> 
   kable_styling(latex_options = c("hold_position"))
-```
-
-```{r spp-cnts-date-old, eval = F}
-spp_fl |> 
-  mutate(year = year(date)) |> 
-  group_by(year, date) |> 
-  count(species) |> 
-  ungroup() |>
-  mutate(across(n,
-                as.character)) |> 
-  mutate(across(n,
-                ~ if_else((date == ymd(20210401) |
-                             date == ymd(20210408)) &
-                            species == "Steelhead",
-                          paste0(., footnote_marker_number(1)),
-                          .)),
-         across(n,
-                ~ if_else((date == ymd(20220309) |
-                             date == ymd(20220316) |
-                             date == ymd(20220520)) &
-                            species == "Steelhead",
-                          paste0(., footnote_marker_number(2)),
-                          .)),
-         across(n,
-                ~ if_else(date == ymd(20210608) &
-                            species == "Steelhead",
-                          paste0(., footnote_marker_alphabet(1)),
-                          .)),
-         across(n,
-                ~ if_else((date == ymd(20220504) |
-                             date == ymd(20220520) |
-                             date == ymd(20220601)) &
-                            species == "Steelhead",
-                          paste0(., footnote_marker_alphabet(2)),
-                          .))) |> 
-  pivot_wider(names_from = "species",
-              values_from = "n",
-              values_fill = as.character(0)) |>
-  bind_rows(spp_fl |> 
-              mutate(year = year(date)) |> 
-              group_by(year) |> 
-              count(species) |> 
-              mutate(across(n,
-                            as.character)) |> 
-              pivot_wider(names_from = "species",
-                          values_from = "n",
-                          values_fill = as.character(0))) |> 
-  arrange(year, date) |> 
-  mutate(across(date,
-                ~ format(., "%b %d"))) |>
-  mutate(across(date,
-                ~ replace_na(., "Total"))) |> 
-  clean_names("title") |> 
-  kable(escape = F,
-        booktabs = T,
-        linesep = "",
-        longtable = T,
-        caption = "Counts of species encountered during species composition sampling in the lower Dungeness River in 2021 and 2022.") |> 
-  kable_styling(latex_options = c("repeat_header",
-                                  "hold_position")) |> 
-  row_spec(c(n_distinct(spp_fl$date[year(spp_fl$date) == 2021]) + 1,
-             n_distinct(spp_fl$date) + 2),
-           bold = T) |>
-  row_spec(c(n_distinct(spp_fl$date[year(spp_fl$date) == 2021]),
-             n_distinct(spp_fl$date) + 1),
-           hline_after = T) |>
-  collapse_rows(1) |>
-  footnote(number = c("1 hatchery-origin steelhead was captured on April 1, 2021; and 2 hatchery-origin steelhead were captured on April 8, 2021.",
-                      "1 hatchery-origin steelhead was captured on March 9, 2022; 2 hatchery-origin steelhead were captured on March 16, 2022; and 1 hatchery-origin steelhead was captured on May 20, 2022."),
-           alphabet = c("1 steelhead was identified as a kelt on June 8, 2021.",
-                        "4 steelhead were identified as kelts on May 4, 2022; 2 steelhead were identified as kelts of May 20, 2022; and 1 was identified as a kelt on June 1, 2022."),
-           threeparttable = T)
 ```
 
 ```{r spp-cnts-date}
 sthd_kelts <- spp_comp |> 
-    filter(str_detect(comments, "kelt") |
-             str_detect(comments, "Kelt")) |> 
-    mutate(year = year(date)) |> 
-    group_by(year, date) |> 
-    count(species) |> 
-    ungroup() |> 
-    select(-species) |> 
-    rename(`Steelhead Kelt` = n)
+  filter(str_detect(comments, "kelt") |
+           str_detect(comments, "Kelt")) |> 
+  mutate(year = year(date)) |> 
+  group_by(year, date) |> 
+  count(species) |> 
+  ungroup() |> 
+  select(-species) |> 
+  rename(`Steelhead Kelt` = n)
 
 
 spp_fl |> 
   mutate(year = year(date)) |> 
   mutate(across(mark_status,
                 ~ replace_na(.,
-                             "Unmarked"))) |> 
+                             "Unmarked")),
+         across(mark_status,
+                ~ recode(., 
+                         "-" = "Unmarked"))) |> 
   group_by(year, date, mark_status) |> 
   count(species) |> 
   ungroup() |>
@@ -1038,7 +993,10 @@ spp_fl |>
               mutate(year = year(date)) |> 
               mutate(across(mark_status,
                             ~ replace_na(.,
-                                         "Unmarked"))) |> 
+                                         "Unmarked")),
+                     across(mark_status,
+                            ~ recode(., 
+                                     "-" = "Unmarked"))) |> 
               group_by(year) |> 
               count(mark_status, species) |> 
               ungroup() |> 
@@ -1071,30 +1029,28 @@ spp_fl |>
   clean_names("title") |> 
   rlang::set_names(function(x) {
     str_replace(x, "Um", "(UM)") |> 
-      str_replace("Ad", "(AD)")# |> 
-      # str_replace(" ", "\n")
+      str_replace("Ad", "(AD)")
   }) |> 
   kable(booktabs = T,
         linesep = "",
         # escape = T,
         align = "c",
         longtable = T,
-        caption = "Counts of species encountered during species composition sampling in the lower Dungeness River in 2021 and 2022, differentiating between marked or clipped steelhead (AD) and unmarked steelhead (UM) and including steelhead kelts.") |> 
+        caption = "Counts of species encountered during species composition sampling in the lower Dungeness River in 2021 - 2023, differentiating between marked or clipped steelhead (AD) and unmarked steelhead (UM) and including steelhead kelts.") |> 
   kable_styling(latex_options = c("repeat_header",
                                   "scale_down",
                                   "hold_position")) |> 
   row_spec(c(n_distinct(spp_fl$date[year(spp_fl$date) == 2021]) + 1,
-             n_distinct(spp_fl$date) + 2),
-           bold = T) |>
-  row_spec(c(n_distinct(spp_fl$date[year(spp_fl$date) == 2021]),
-             n_distinct(spp_fl$date) + 1),
+             n_distinct(spp_fl$date[year(spp_fl$date) %in% c(2021, 2022)]) + 2,
+             n_distinct(spp_fl$date[year(spp_fl$date) %in% c(2021, 2022, 2023)]) + 3),
+           bold = T,
            hline_after = T) |>
-  collapse_rows(1) |> 
-  column_spec(3:8,
-              "1.5cm")
+  column_spec(column = c(3:7),
+              width = "1.5cm") |> 
+  collapse_rows(1)
 ```
 
-```{r fl-hist, fig.height = 4, fig.cap = "Histogram of fork lengths, colored by species. Dashed lines are the overlap range between steelhead and other species."}
+```{r fl-hist, fig.height = 4, fig.cap = "Histogram of fork lengths, colored by species. The dashed line indicates the length above which we assumed all fish were steelhead."}
 spp_fl %>%
   ggplot(aes(x = fork_length_cm,
              fill = species)) +
@@ -1113,7 +1069,7 @@ The impacts of Julian day and fork length on the probability of a fish being a s
 
 Fish greater than 67 cm were deemed steelhead, regardless of the Julian day of year they were observed. Fish less than or equal to 67 cm were deemed steelhead if the predicted probability of being a steelhead from our GAM model was greater than or equal to 50%. The number of fish within each category is shown in Table \@ref(tab:pred-sthd-gam). 
 
-```{r spp-pred, fig.height = 6, fig.cap = "Julian day and fork length of each fish detected on SONAR, 2019-2022, colored by the predicted probability of being a steelhead from the GAM. Size of the point corresponds to the precision of the predicted probability (larger points indicate greater precision). Dark line indicates the 50% probability of being a steelhead. Dashed horizontal lines depict 45 and 67 cm lengths for reference. Yellow points indicate observed fish from the species composition sampling that were used in the GAM."}
+```{r spp-pred, fig.height = 6, fig.cap = "Julian day and fork length of each fish detected on SONAR, 2019-2023, colored by the predicted probability of being a steelhead from the GAM. Size of the point corresponds to the precision of the predicted probability (larger points indicate greater precision). Dark line indicates the 50% probability of being a steelhead. Dashed horizontal lines depict 45 and 67 cm lengths for reference. Yellow points indicate observed fish from the species composition sampling that were used in the GAM."}
 # what is the fork length when 50% of being a steelhead?
 p_pred = 0.5
 pred_tab <- crossing(fork_length_cm = seq(35, 90, by = 1),
@@ -1191,8 +1147,8 @@ sonar_pred_spp |>
             .groups = "drop") |> 
   rowwise() |> 
   mutate(n_sthd = if_else(gr_67, 
-                             n_fish,
-                             prob_gr_50)) |> 
+                          n_fish,
+                          prob_gr_50)) |> 
   group_by(year,
            direction) |> 
   mutate(tot_sthd = sum(n_sthd)) |>
@@ -1219,14 +1175,15 @@ sonar_pred_spp |>
         caption = "Number of fish observed moving downstream or upstream from SONAR (n Fish), separated by fish less than or greater than 67 cm, and whether they were likely (> 50% probability) to be a steelhead according to the species composition GAM (Likely Sthd). Estimated steelhead within each movement and size group (Est. Sthd) are summed across size groups to provide the total steelhead for each year by direction (Total Sthd). Note that for fish greater than 67 cm, we assumed they were all steelhead, regardless of the GAM predictions.") |>
   kable_styling(latex_options = c("scale_down",
                                   "hold_position")) |> 
-  collapse_rows(c(1)) |> 
   column_spec(c(9),
               bold = T) |> 
   add_header_above(c("",
                      "",
-                     "<= 67 cm" = 3,
-                     "> 67 cm" = 3,
-                     ""))
+                     "$\\leq$ 67cm" = 3,
+                     "$\\gt$ 67 cm" = 3,
+                     ""),
+                   escape = F) |> 
+  collapse_rows(c(1))
 ```
 
 \FloatBarrier
@@ -1236,11 +1193,15 @@ sonar_pred_spp |>
 The estimated marginal effects of various covariates on the expected number of upstream and downstream moving fish are shown in Figures \@ref(fig:up-marg) and \@ref(fig:down-marg) respectively. For both directions, the model indicates that a greater number of steelhead will move during the night, especially in the late evening, compared to the daytime, and more will move when discharge flows are near 600 cfs. There is also a clear effect of day-of-year, with upstream numbers peaking near the beginning of April, while downstream numbers peak near the beginning of May, with some year-to-year variability in that run-timing curve. 
 
 ```{r gam-plots}
+hr_max = 0.5
+disch_max = 0.3
+doy_max = 35
+
 up_hr_p <- plot_smooths(up_mod,
                         series = hour_of_day,
                         conditions = quos(prop_hr_sampled == 1),
                         transform = exp) +
-  scale_y_continuous(limits = c(NA, 0.9)) +
+  scale_y_continuous(limits = c(NA, hr_max)) +
   labs(x = "Hour of Day",
        y = "Expected Number\nUpstream Fish / 30 min")
 
@@ -1249,8 +1210,8 @@ up_disch_p <- plot_smooths(up_mod,
                            # comparison = year,
                            conditions = quos(prop_hr_sampled == 1),
                            transform = exp) +
-  scale_y_continuous(limits = c(NA, 0.3)) +
-  scale_x_continuous(limits = c(NA, 2100)) +
+  scale_y_continuous(limits = c(NA, disch_max)) +
+  scale_x_continuous(limits = c(NA, max(up_data$mean_discharge, na.rm = T))) +
   labs(x = "Discharge (cfs)",
        y = "Expected Number\nUpstream Fish / 30 min")
 
@@ -1281,7 +1242,7 @@ up_doy_p <- get_gam_predictions(up_mod,
               color = NA,
               alpha = 0.2) +
   geom_line() +
-  scale_y_continuous(limits = c(NA, 27)) +
+  scale_y_continuous(limits = c(NA, doy_max)) +
   scale_x_date(date_labels = "%b%e") +
   scale_colour_discrete_qualitative(name = "Year") +
   scale_fill_discrete_qualitative(name = "Year") +
@@ -1301,7 +1262,7 @@ down_hr_p <- plot_smooths(down_mod,
                           series = hour_of_day,
                           conditions = quos(prop_hr_sampled == 1),
                           transform = exp) +
-  scale_y_continuous(limits = c(NA, 0.9)) +
+  scale_y_continuous(limits = c(NA, hr_max)) +
   labs(x = "Hour of Day",
        y = "Expected Number\nDownstream Fish / 30 min")
 
@@ -1310,8 +1271,8 @@ down_disch_p <- plot_smooths(down_mod,
                              # comparison = year,
                              conditions = quos(prop_hr_sampled == 1),
                              transform = exp) +
-  scale_y_continuous(limits = c(NA, 0.3)) +
-  scale_x_continuous(limits = c(NA, 2100)) +
+  scale_y_continuous(limits = c(NA, disch_max)) +
+  scale_x_continuous(limits = c(NA, max(down_data$mean_discharge, na.rm = T))) +
   labs(x = "Discharge (cfs)",
        y = "Expected Number\nDownstream Fish / 30 min")
 
@@ -1342,7 +1303,7 @@ down_doy_p <- get_gam_predictions(down_mod,
               color = NA,
               alpha = 0.2) +
   geom_line() +
-  scale_y_continuous(limits = c(NA, 27)) +
+  scale_y_continuous(limits = c(NA, doy_max)) +
   scale_x_date(date_labels = "%b%e") +
   scale_colour_discrete_qualitative(name = "Year") +
   scale_fill_discrete_qualitative(name = "Year") +
@@ -1478,7 +1439,7 @@ comp_est |>
              size = 4,
              position = position_jitter(width = pd)) +
   scale_color_discrete_qualitative(palette = "Dark 3",
-                     name = "Data\nSource") +
+                                   name = "Data\nSource") +
   labs(x = "Year",
        y = "Total Upstream Escapement")
 ```
@@ -1488,11 +1449,13 @@ comp_est |>
 
 # Discussion
 
-We used SONAR to make annual estimates of winter steelhead on the Dungeness River for spawn years 2019 - 2022. To do so, we needed to collect and utilize independent species composition data, and develop an analysis technique that allowed us to estimate passage during periods when the SONAR was not operable or the video had not been reviewed. In addition, analyzing these initial years of data has prompted several observations worth mentioning.
+***Should we add a paragraph about 2023? Higher upstream and downstream counts (but not as high as 2018), but not a tremendously higher estimates of escapement: suggests more milling. Mention that site characteristics changed due to restoration actions?***
 
-First, SONAR location  is a crucial component of a successful SONAR project. After observing the fish behavior at the initial location in 2018, we moved the SONAR to a habitat unit that was more of a run, and more conducive to fish actively migrating through rather than milling around. In addition to fish behavior at the site, access and security are important considerations. After we moved the SONAR site slightly upstream in 2019, and deployed the unit from a fixed platform on the bank, it was much easier for the team to check on and make adjustments to the unit. The 2019-2022 site is also located on WDFW property, enabling a direct power source, and an on-site staff trailer for security and comfort in bad weather.  
+We used SONAR to make annual estimates of winter steelhead on the Dungeness River for spawn years 2019 - 2023. To do so, we needed to collect and utilize independent species composition data, and develop an analysis technique that allowed us to estimate passage during periods when the SONAR was not operable or the video had not been reviewed. In addition, analyzing these initial years of data has prompted several observations worth mentioning.
 
-In addition to the location, several factors in 2018 prevented estimation of escapement. The amount of SONAR imagery that was not reviewed in 2018 was much higher than in other years (Figures \@ref(fig:op-fig) and \@ref(fig:review-fig) and Table \@ref(tab:pct-ops)). Additionally, the counts of both upstream and downstream moving fish were much higher in 2018, presumably due in part to more milling behavior at that site. The mean count of upstream moving fish in 2018 in a half-hour period was 1.02, while it ranged from 0.24 - 0.35 in 2019 - 2022. For downstream moving fish it was a mean of 0.70 in 2018, and a range of 0.1 - 0.15 in 2019 - 2022. Due to these reasons, we made the decision to treat 2018 as a pilot year and did not make a SONAR-based escapement estimate, and instead utilize the lessons learned from that year to improve operations in subsequent years.
+First, SONAR location  is a crucial component of a successful SONAR project. After observing the fish behavior at the initial location in 2018, we moved the SONAR to a habitat unit that was more of a run, and more conducive to fish actively migrating through rather than milling around. In addition to fish behavior at the site, access and security are important considerations. After we moved the SONAR site slightly upstream in 2019, and deployed the unit from a fixed platform on the bank, it was much easier for the team to check on and make adjustments to the unit. The 2019-2023 site is also located on WDFW property, enabling a direct power source, and an on-site staff trailer for security and comfort in bad weather.  
+
+In addition to the location, several factors in 2018 prevented estimation of escapement. The amount of SONAR imagery that was not reviewed in 2018 was much higher than in other years (Figures \@ref(fig:op-fig) and \@ref(fig:review-fig) and Table \@ref(tab:pct-ops)). Additionally, the counts of both upstream and downstream moving fish were much higher in 2018, presumably due in part to more milling behavior at that site. The mean count of upstream moving fish in 2018 in a half-hour period was 1.02, while it ranged from 0.16 - 0.26 in 2019 - 2022 and rose to 0.43 in 2023. For downstream moving fish it was a mean of 0.70 in 2018, and a range of 0.06 - 0.1 in 2019 - 2022 before rising to 0.29 in 2023. Due to these reasons, we made the decision to treat 2018 as a pilot year and did not make a SONAR-based escapement estimate, and instead utilize the lessons learned from that year to improve operations in subsequent years.
 
 Second, the variability between observers was relatively small. The total counts between pairs of observers each year were very similar, especially for upstream moving fish (Table \@ref(tab:obs-totals)). The coefficient of variation among different observers' length measurements was quite small, suggesting good consistency across observers. It should be noted that we matched up which fish each observer measured in such a way as to minimize observer-to-observer differences for multiple fish observed in the same half-hour period. The overall bias in measurements, compared to observer AS, was quite low, but not zero. This could have an impact on whether a fish is predicted to be a steelhead or not, since length is a determining covariate in the species prediction model. However, Figure \@ref(fig:lgth-comp-fig) suggests that there are differences in length measurements in both the positive and negative direction, so the impact on steelhead counts should be minimal.
 

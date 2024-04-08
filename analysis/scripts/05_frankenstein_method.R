@@ -1,7 +1,7 @@
 # Author: Kevin See
 # Purpose: Use multiple methods including regression to finalize estimates
 # Created: 4/28/23
-# Last Modified: 4/30/23
+# Last Modified: 3/18/24
 # Notes:
 
 #-----------------------------------------------------------------
@@ -49,17 +49,20 @@ sthd_cnts <- sonar_sthd |>
                 ~ if_else(is.na(.),
                           hour,
                           .)),
-         dt = date + time,
-         across(dt,
-                ~ ymd_hms(as.character(.), tz = "America/Los_Angeles"))) |>
+         dt = date + time) |>
   filter(!is.na(direction)) |>
   mutate(hr_int = NA_real_)
 
+# tz(sthd_cnts$dt) = "America/Los_Angeles"
+
 # which interval is each observation in?
-for(i in 1:nrow(sthd_cnts)) {
-  sthd_cnts$hr_int[i] = which(sthd_cnts$dt[i] %within% hr_periods$hr_interval)
-}
-rm(i)
+sthd_cnts <-
+  sthd_cnts |>
+  mutate(hr_int = map_int(dt,
+                          .f = function(x) {
+                            min(which(x %within% hr_periods$hr_interval))
+                          },
+                          .progress = T))
 
 
 ts_hr <- hr_periods |>
@@ -229,7 +232,8 @@ comp_30_df |>
              y = second)) +
   geom_abline(linetype = 2,
               color = "red") +
-  geom_point(position = position_jitter(width = 0.1,
+  geom_point(#aes(color = as.factor(year)),
+             position = position_jitter(width = 0.1,
                                         height = 0.1)) +
   geom_smooth(method = lm,
               formula = y ~ x - 1) +
@@ -321,7 +325,7 @@ per_fit_df %<>%
 per_fit_df
 
 # diagnostic plots
-autoplot(per_fit_df$mod[[5]],
+autoplot(per_fit_df$mod[[6]],
          1:6)
 
 
@@ -464,6 +468,7 @@ ts_reviewed <- analysis_grps |>
   arrange(time_scale,
           date_time,
           direction) |>
+  filter(year > 2018) |>
   mutate(total = first + second,
          across(c(lci, uci),
                 ~ first + .))
@@ -523,6 +528,7 @@ ts_est <- analysis_grps |>
   filter(time_scale %in% unique(reviewed_pers$time_scale),
          !reviewed) |>
   unnest(data) |>
+  filter(year > 2018) |>
   mutate(est_type = "Missing Data") |>
   bind_rows(ts_expanded) |>
   select(any_of(names(ts_expanded))) |>

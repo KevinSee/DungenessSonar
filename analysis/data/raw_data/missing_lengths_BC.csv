@@ -1,0 +1,4 @@
+year,date,hour,data_recorded,data_reviewed,observer,time,behavior,direction,fork_length_cm,frame,range,confidence,comments,bc_review,flag,bc_comments_qaqc
+2023,2023-03-03T00:00:00Z,4H 0M 0S,Full,First 30,JE,4H 11M 39S,NA,upstream,57.9,3534,1.54,1,unable to measure fish swimming US as it is tomn close to sonar and covers beyond width of the image,NA,NA,yes going ds. BC change to 1
+2023,2023-03-03T00:00:00Z,4H 0M 0S,Full,First 30,JE,4H 12M 42S,NA,upstream,57.9,3870,7.07,1,add this fish to dataset. Jake missed counting it going upstream the second time. ,,,
+2023,2023-03-20T00:00:00Z,5H 30M 0S,Full,Second 30,JE,5H 44M 0S,NA,upstream,NA,4430,4.91,1,remove from dataset,NA,NA,NA

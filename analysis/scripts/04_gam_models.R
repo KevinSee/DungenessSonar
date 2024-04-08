@@ -1,7 +1,7 @@
 # Author: Kevin See
 # Purpose: Fit GAM to time-series with missing data
 # Created: 4/21/23
-# Last Modified: 3/8/24
+# Last Modified: 3/18/24
 # Notes:
 
 #-----------------------------------------------------------------
@@ -155,6 +155,9 @@ disc_day_df |>
   facet_wrap(~ year,
              scales = "free_x")
 
+#------------------------------------
+# model data
+#------------------------------------
 # summarized at half hour intervals
 # upstream observations
 up_data <-
@@ -295,8 +298,6 @@ up_mod <- gam(total_observed_hr ~
                 s(day_of_year, year, bs = "fs") +
                 offset(log(prop_hr_sampled)),
               family = nb,
-              # method = "REML",
-              optimizer = c("outer", "optim"),
               data = up_data)
 
 
@@ -309,6 +310,23 @@ summary(up_mod)
 print(up_mod)
 plot(up_mod)
 plot(down_mod)
+
+
+# save a bunch of objects
+time_step <- if_else(sum(str_detect(up_data$date_time[12], ":30:")) > 0,
+                     "30 min",
+                     "1 hour")
+
+save(ts_half_hr,
+     up_data,
+     up_mod,
+     down_data,
+     down_mod,
+     file = here("analysis/data/derived_data",
+                 paste0("gam_",
+                        str_replace(time_step, " ", "_"),
+                        ".rda")))
+
 
 #---------------------------------------------------------
 # plot some of the effects
@@ -329,8 +347,10 @@ up_disch_p <- plot_smooths(up_mod,
                            # comparison = year,
                            conditions = quos(prop_hr_sampled == 1),
                            transform = exp) +
-  scale_y_continuous(limits = c(NA, 0.3)) +
-  scale_x_continuous(limits = c(NA, 2100)) +
+  scale_y_continuous(limits = c(NA, 0.4)) +
+  scale_x_continuous(limits = c(NA, max(up_data$mean_discharge, na.rm = T))) +
+  geom_rug(data = up_data,
+           aes(x = mean_discharge)) +
   labs(x = "Discharge",
        y = "Expected Number Upstream\nFish / 30 min") +
   theme(plot.background = element_rect(fill='transparent', color=NA),
@@ -353,6 +373,9 @@ up_doy_p <- get_gam_predictions(up_mod,
          across(c(total_observed_hr,
                   starts_with("CI")),
                 ~ . * 2 * 24)) |>
+         # across(c(total_observed_hr,
+         #          starts_with("CI")),
+         #        ~ . * 24)) |>
   filter(month(date) < 6) |>
   ggplot(aes(x = date,
              y = total_observed_hr,
@@ -363,7 +386,7 @@ up_doy_p <- get_gam_predictions(up_mod,
               color = NA,
               alpha = 0.2) +
   geom_line() +
-  scale_y_continuous(limits = c(NA, 27)) +
+  scale_y_continuous(limits = c(NA, 35)) +
   labs(x = "Date",
        y = "Expected Number Upstream\nFish / Day",
        color = "Year",
@@ -391,7 +414,7 @@ down_hr_p <- plot_smooths(down_mod,
                           series = hour_of_day,
                           conditions = quos(prop_hr_sampled == 1),
                           transform = exp) +
-  scale_y_continuous(limits = c(0, 0.4)) +
+  scale_y_continuous(limits = c(0, 0.5)) +
   labs(x = "Hour of Day",
        y = "Expected Number Downstream\nFish / 30 min") +
   theme(plot.background = element_rect(fill='transparent', color=NA),
@@ -404,8 +427,8 @@ down_disch_p <- plot_smooths(down_mod,
                              # comparison = year,
                              conditions = quos(prop_hr_sampled == 1),
                              transform = exp) +
-  scale_y_continuous(limits = c(NA, 0.3)) +
-  scale_x_continuous(limits = c(NA, 2100)) +
+  scale_y_continuous(limits = c(NA, 0.4)) +
+  scale_x_continuous(limits = c(NA, max(down_data$mean_discharge, na.rm = T))) +
   labs(x = "Discharge",
        y = "Expected Number Downstream\nFish / 30 min") +
   theme(plot.background = element_rect(fill='transparent', color=NA),
@@ -463,7 +486,7 @@ down_doy_p <- get_gam_predictions(down_mod,
               color = NA,
               alpha = 0.2) +
   geom_line() +
-  scale_y_continuous(limits = c(NA, 27)) +
+  scale_y_continuous(limits = c(NA, 35)) +
   # scale_y_continuous(limits = c(NA, 66)) +
   labs(x = "Date",
        y = "Expected Number Downstream\nFish / Day",
@@ -487,21 +510,24 @@ ggsave(here("analysis/figures",
 
 
 
+# clean up some objects
+rm(down_disch_p,
+   down_doy_p,
+   down_hr_p,
+   up_disch_p,
+   up_doy_p,
+   up_hr_p)
 
 #----------------------------------------------
 # prediction
 #----------------------------------------------
-time_step <- if_else(sum(str_detect(up_data$date_time[12], ":30:")) > 0,
-                     "30 min",
-                     "1 hour")
-
 
 newdata <- tibble(year = unique(up_data$year)) |>
   mutate(date_time =
            map(year,
                .f = function(yr) {
-                 tibble(date_time = seq(ymd_hms(paste0(yr, "0201 00:00:00"), tz = "America/Los_Angeles"),
-                                        ymd_hms(paste0(yr, "0615 00:00:00"), tz = "America/Los_Angeles"),
+                 tibble(date_time = seq(ymd_hms(paste0(yr, "0201 00:00:00"), tz = tz(up_data$date_time)),
+                                        ymd_hms(paste0(yr, "0615 00:00:00"), tz = tz(up_data$date_time)),
                                         by = time_step))
                })) |>
   unnest(date_time) |>
@@ -565,14 +591,14 @@ rm(beta, V, num_beta_vecs,
 
 all_draws <- newdata |>
   bind_cols(y_sims_up |>
-              as_tibble(.names_repair = function(x) paste0("V", 1:ncol(x)))) |>
+              as_tibble()) |>
   pivot_longer(-any_of(names(newdata)),
                names_to = "draw",
                values_to = "value") |>
   mutate(direction = "up") |>
   bind_rows(newdata |>
               bind_cols(y_sims_down |>
-                          as_tibble(.names_repair = function(x) paste0("V", 1:ncol(x)))) |>
+                          as_tibble()) |>
               pivot_longer(-any_of(names(newdata)),
                            names_to = "draw",
                            values_to = "value") |>
@@ -583,8 +609,18 @@ all_draws <- newdata |>
                 as.integer))
 
 # delete some draws that may be absurd
-all_draws <- all_draws |>
-  filter(value < 1e1)
+# threshold for predictions of up/down movement in a 30 min period (or 1 hr period)
+my_thres = 10
+
+all_draws <-
+  all_draws |>
+  pivot_wider(names_from = direction,
+              values_from = value) |>
+  filter(up <= my_thres,
+         down <= my_thres) |>
+  pivot_longer(cols = c(up, down),
+               names_to = "direction",
+               values_to = "value")
 
 #-----------------------------------------------------------------------
 # save the all_draws object
@@ -593,6 +629,28 @@ write_rds(all_draws,
                       paste0("mcmc_draws_all_",
                              str_replace(time_step, " ", "_"),
                              ".rds")))
+
+# clean up some objects
+rm(disc_all_df,
+   disc_day_df,
+   disc_hr_df,
+   down_data,
+   # newdata,
+   up_data,
+   y_sims_down,
+   y_sims_up,
+   ts_df,
+   obs_day,
+   obs_hr,
+   mod_df,
+   my_thres)
+
+rm(up_mod,
+   down_mod,
+   ts_half_hr)
+gc()
+
+
 
 #-----------------------------------------------------------------------
 # replace predicted values with observed values when available
@@ -617,14 +675,15 @@ write_rds(all_draws_wobs,
                       paste0("mcmc_draws_all_wobs_",
                              str_replace(time_step, " ", "_"),
                              ".rds")))
-#------------------------------------------------------
-# decide which one to use
-time_step = c("30 min",
-              "1 hour")[1]
 
 rm(all_draws,
    all_draws_wobs)
 gc()
+
+#------------------------------------------------------
+# decide which one to use
+time_step = c("30 min",
+              "1 hour")[1]
 
 # all_draws <- read_rds(here("analysis/data/derived_data",
 #                            paste0("mcmc_draws_all_",
@@ -636,6 +695,7 @@ all_draws <- read_rds(here("analysis/data/derived_data",
                                   str_replace(time_step, " ", "_"),
                                   ".rds")))
 gc()
+
 #-----------------------------------------------------------------------
 # sum MCMC draws at certain time scales
 hr_draws <- all_draws |>
@@ -652,6 +712,7 @@ write_rds(hr_draws,
                       paste0("mcmc_draws_hour_",
                              str_replace(time_step, " ", "_"),
                              ".rds")))
+rm(hr_draws)
 gc()
 
 # day scale
@@ -669,12 +730,13 @@ write_rds(day_draws,
                       paste0("mcmc_draws_day_",
                              str_replace(time_step, " ", "_"),
                              ".rds")))
-
+rm(day_draws)
 gc()
 
 # year scale
 yr_draws <- all_draws |>
-  filter(month(date) < 6) |>
+  filter(month(date) < 6 |
+           (month(date) == 6 & mday(date) <= 15)) |>
   # mutate(across(value,
   #               round_half_up)) |>
   group_by(year, direction, draw) |>
@@ -688,7 +750,7 @@ write_rds(yr_draws,
                       paste0("mcmc_draws_year_",
                              str_replace(time_step, " ", "_"),
                              ".rds")))
-
+rm(yr_draws)
 gc()
 
 #-----------------------------------------------------------------------
@@ -712,6 +774,15 @@ half_hr_est <- all_draws |>
               pivot_wider(names_from = quantile,
                           values_from = value))
 
+rm(all_draws)
+gc()
+
+hr_draws <-
+  read_rds(here("analysis/data/derived_data",
+                paste0("mcmc_draws_hour_",
+                       str_replace(time_step, " ", "_"),
+                       ".rds")))
+
 hourly_est <- hr_draws |>
   group_by(date_hr,
            direction) |>
@@ -730,6 +801,14 @@ hourly_est <- hr_draws |>
               add_column(quantile = rep(c("2.5%", "50%", "97.5%"), nrow(.) / 3)) |>
               pivot_wider(names_from = quantile,
                           values_from = value))
+rm(hr_draws)
+gc()
+
+day_draws <-
+  read_rds(here("analysis/data/derived_data",
+                paste0("mcmc_draws_day_",
+                       str_replace(time_step, " ", "_"),
+                       ".rds")))
 
 daily_est <- day_draws |>
   group_by(date,
@@ -750,38 +829,46 @@ daily_est <- day_draws |>
               pivot_wider(names_from = quantile,
                           values_from = value))
 
-yearly_est <- yr_draws |>
-  group_by(year,
-           direction) |>
-  summarize(
-    across(
-      value,
-      list(mean = ~ mean(.),
-           median = ~ median(.),
-           se = ~ sd(.)),
-      .names = "{.fn}"),
-    .groups = "drop") |>
-  left_join(yr_draws |>
-              group_by(year,
-                       direction) |>
-              reframe(across(value,
-                             ~ quantile(., c(0.025, 0.5, 0.975)))) %>%
-              add_column(quantile = rep(c("2.5%", "50%", "97.5%"), nrow(.) / 3)) |>
-              pivot_wider(names_from = quantile,
-                          values_from = value))
+rm(day_draws)
+gc()
+
+
+# yr_draws <-
+#   read_rds(here("analysis/data/derived_data",
+#                 paste0("mcmc_draws_year_",
+#                        str_replace(time_step, " ", "_"),
+#                        ".rds")))
+#
+# yearly_est <- yr_draws |>
+#   group_by(year,
+#            direction) |>
+#   summarize(
+#     across(
+#       value,
+#       list(mean = ~ mean(.),
+#            median = ~ median(.),
+#            se = ~ sd(.)),
+#       .names = "{.fn}"),
+#     .groups = "drop") |>
+#   left_join(yr_draws |>
+#               group_by(year,
+#                        direction) |>
+#               reframe(across(value,
+#                              ~ quantile(., c(0.025, 0.5, 0.975)))) %>%
+#               add_column(quantile = rep(c("2.5%", "50%", "97.5%"), nrow(.) / 3)) |>
+#               pivot_wider(names_from = quantile,
+#                           values_from = value))
 
 # save a bunch of objects
-save(ts_half_hr,
-     time_step,
-     newdata,
-     up_mod,
-     down_mod,
+save(newdata,
+     # up_mod,
+     # down_mod,
      half_hr_est,
      hourly_est,
      daily_est,
      # yearly_est,
      file = here("analysis/data/derived_data",
-                 paste0("gam_",
+                 paste0("gam_preds_",
                         str_replace(time_step, " ", "_"),
                         ".rda")))
 
@@ -792,6 +879,10 @@ time_step = c("30 min",
               "1 hour")[1]
 load(here("analysis/data/derived_data",
           paste0("gam_",
+                 str_replace(time_step, " ", "_"),
+                 ".rda")))
+load(here("analysis/data/derived_data",
+          paste0("gam_preds",
                  str_replace(time_step, " ", "_"),
                  ".rda")))
 
@@ -845,7 +936,7 @@ daily_est |>
               color = NA,
               alpha = 0.4) +
   geom_line() +
-  scale_y_continuous(limits = c(NA, 40)) +
+  # scale_y_continuous(limits = c(NA, 40)) +
   facet_wrap(~ direction) +
   theme(legend.position = "bottom")+
   labs(x = "Date",
@@ -862,6 +953,12 @@ ggsave(here("analysis/figures",
        bg = "transparent")
 
 #------------------------------------------------------------
+load(here("analysis/data/derived_data",
+          paste0("gam_",
+                 str_replace(time_step, " ", "_"),
+                 ".rda")))
+
+
 obs_fit_df <- half_hr_est |>
   inner_join(ts_half_hr |>
                filter(reviewed) |>
@@ -939,6 +1036,11 @@ obs_fit_df |>
        y = "Residual")
 
 #-----------------------------------------------
+load(here("analysis/data/derived_data",
+          paste0("gam_preds_",
+                 str_replace(time_step, " ", "_"),
+                 ".rda")))
+
 load(here("analysis/data/derived_data",
           "frankenstein_estimates.rda"))
 
@@ -1357,13 +1459,15 @@ up_down_draws |>
              fill = as.factor(year))) +
   geom_hline(yintercept = 1,
              linetype = 2) +
-  geom_ribbon(aes(ymin = `2.5%`,
-                  ymax = `97.5%`),
-              color = NA,
-              alpha = 0.2) +
-  geom_line() +
-  geom_smooth(se = F) +
-  scale_y_continuous(limits = c(NA, 20)) +
+  # geom_ribbon(aes(ymin = `2.5%`,
+  #                 ymax = `97.5%`),
+  #             color = NA,
+  #             alpha = 0.2) +
+  # geom_line() +
+  geom_point() +
+  geom_smooth(se = T,
+              alpha = 0.3) +
+  scale_y_continuous(limits = c(NA, 7)) +
   scale_color_brewer(palette = "Set1",
                      name = "Year") +
   scale_fill_brewer(palette = "Set1",
