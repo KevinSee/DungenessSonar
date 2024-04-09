@@ -104,7 +104,7 @@ disc_day_df <- dataRetrieval::readNWISdv("12048000",
   rename(mean_discharge = Flow,
          date = Date) |>
   mutate(across(date,
-                ~ ymd(as.character(.), tz = "America/Los_Angeles")),
+                ~ ymd(as.character(.), tz = "UTC")),
          across(date,
                 ~ floor_date(., unit = "days"))) |>
   select(-Flow_cd)
@@ -115,7 +115,7 @@ disc_all_df <- dataRetrieval::readNWISuv(siteNumbers = "12048000",
                                          startDate = as.character(min(ts_half_hr$date_time)),
                                          # endDate = ymd(20190701),
                                          endDate = as.character(ceiling_date(max(ts_half_hr$date_time), unit = "days")),
-                                         tz = "America/Los_Angeles") |>
+                                         tz = "UTC") |>
   as_tibble() |>
   dataRetrieval::renameNWISColumns() |>
   rename(mean_discharge = Flow_Inst,
@@ -278,15 +278,19 @@ down_data %<>%
 #          prop_hr_sampled = reviewed / 2)
 #
 # # add discharge data
-# up_data %<>%
+# up_data <-
+#   up_data |>
 #   left_join(disc_day_df |>
 #               select(date,
-#                      mean_discharge))
+#                      mean_discharge),
+#             by = join_by(date))
 #
-# down_data %<>%
+# down_data <-
+#   down_data |>
 #   left_join(disc_day_df |>
 #               select(date,
-#                      mean_discharge))
+#                      mean_discharge),
+#             by = join_by(date))
 
 
 # upstream model
@@ -386,7 +390,8 @@ up_doy_p <- get_gam_predictions(up_mod,
               color = NA,
               alpha = 0.2) +
   geom_line() +
-  scale_y_continuous(limits = c(NA, 35)) +
+  # scale_y_continuous(limits = c(NA, 35)) +
+  scale_y_continuous(limits = c(NA, 70)) +
   labs(x = "Date",
        y = "Expected Number Upstream\nFish / Day",
        color = "Year",
@@ -589,28 +594,36 @@ rm(beta, V, num_beta_vecs,
    Cv, nus, beta_sims, X, z_sims)
 
 
-all_draws <- newdata |>
+all_draws <-
+  newdata |>
   bind_cols(y_sims_up |>
-              as_tibble()) |>
+              as_tibble(.name_repair = "unique_quiet")) |>
   pivot_longer(-any_of(names(newdata)),
-               names_to = "draw",
+               names_to = "col_nm",
                values_to = "value") |>
   mutate(direction = "up") |>
   bind_rows(newdata |>
               bind_cols(y_sims_down |>
-                          as_tibble()) |>
+                          as_tibble(.name_repair = "unique_quiet")) |>
               pivot_longer(-any_of(names(newdata)),
-                           names_to = "draw",
+                           names_to = "col_nm",
                            values_to = "value") |>
               mutate(direction = "down")) |>
-  mutate(across(draw,
-                ~ str_remove(., "^V")),
-         across(draw,
-                as.integer))
+  group_by(date_time,
+           direction) |>
+  mutate(draw = 1:n()) |>
+  ungroup() |>
+  select(-col_nm) |>
+  relocate(draw,
+           .before = "value") |>
+  arrange(date_time,
+          draw,
+          direction)
 
 # delete some draws that may be absurd
 # threshold for predictions of up/down movement in a 30 min period (or 1 hr period)
-my_thres = 10
+my_thres = case_when(time_step == "30 min" ~ 10,
+                     time_step == "1 hour" ~ 20)
 
 all_draws <-
   all_draws |>
@@ -634,27 +647,30 @@ write_rds(all_draws,
 rm(disc_all_df,
    disc_day_df,
    disc_hr_df,
-   down_data,
+   # down_data,
    # newdata,
-   up_data,
+   # up_data,
    y_sims_down,
    y_sims_up,
    ts_df,
    obs_day,
    obs_hr,
    mod_df,
-   my_thres)
+   my_thres,
+   text_size)
 
-rm(up_mod,
-   down_mod,
-   ts_half_hr)
+# rm(up_mod,
+#    down_mod,
+#    ts_half_hr)
 gc()
 
 
 
 #-----------------------------------------------------------------------
 # replace predicted values with observed values when available
-all_draws_wobs <- all_draws |>
+if(time_step == "30 min") {
+  all_draws_wobs <-
+  all_draws |>
   left_join(ts_half_hr |>
               filter(reviewed) |>
               select(date_time,
@@ -668,6 +684,38 @@ all_draws_wobs <- all_draws |>
                 .)
     )
   )
+} else if(time_step == "1 hour") {
+  all_draws_wobs <-
+    all_draws |>
+    left_join(up_data |>
+                filter(reviewed > 0) |>
+                mutate(obs_fish = case_when(reviewed == 2 ~ n_fish,
+                                            reviewed == 1 ~ n_fish / prop_hr_sampled),
+                       direction = "up") |>
+                select(date_time,
+                       direction,
+                       prop_hr_obs = prop_hr_sampled,
+                       obs_fish) |>
+                bind_rows(down_data |>
+                            filter(reviewed > 0) |>
+                            mutate(obs_fish = case_when(reviewed == 2 ~ n_fish,
+                                                        reviewed == 1 ~ n_fish / prop_hr_sampled),
+                                   direction = "down") |>
+                            select(date_time,
+                                   direction,
+                                   prop_hr_obs = prop_hr_sampled,
+                                   obs_fish)),
+              by = join_by(date_time, direction)) |>
+    mutate(
+      across(
+        value,
+        ~ if_else(!is.na(obs_fish) & !is.na(prop_hr_sampled),
+                  obs_fish,
+                  .)
+      )
+    )
+}
+
 
 # and save that object
 write_rds(all_draws_wobs,
@@ -698,6 +746,13 @@ gc()
 
 #-----------------------------------------------------------------------
 # sum MCMC draws at certain time scales
+if(time_step == "1 hour") {
+  hr_draws <- all_draws |>
+    select(date_hr,
+           direction,
+           draw,
+           value)
+} else {
 hr_draws <- all_draws |>
   # mutate(across(value,
   #               round_half_up)) |>
@@ -705,6 +760,7 @@ hr_draws <- all_draws |>
   summarize(across(value,
                    sum),
             .groups = "drop")
+}
 
 # save the MCMC draws as separate objects
 write_rds(hr_draws,
@@ -755,27 +811,32 @@ gc()
 
 #-----------------------------------------------------------------------
 # summary statistics
-half_hr_est <- all_draws |>
-  group_by(date_time,
-           direction) |>
-  summarize(
-    across(
-      value,
-      list(mean = ~ mean(.),
-           se = ~ sd(.)),
-      .names = "{.fn}"),
-    .groups = "drop") |>
-  left_join(all_draws |>
-              group_by(date_time,
-                       direction) |>
-              reframe(across(value,
-                             ~ quantile(., c(0.025, 0.5, 0.975)))) %>%
-              add_column(quantile = rep(c("2.5%", "50%", "97.5%"), nrow(.) / 3)) |>
-              pivot_wider(names_from = quantile,
-                          values_from = value))
+if(time_step == "30 min") {
+  half_hr_est <-
+    all_draws |>
+    group_by(date_time,
+             direction) |>
+    summarize(
+      across(
+        value,
+        list(mean = ~ mean(.),
+             se = ~ sd(.)),
+        .names = "{.fn}"),
+      .groups = "drop") |>
+    left_join(all_draws |>
+                group_by(date_time,
+                         direction) |>
+                reframe(across(value,
+                               ~ quantile(., c(0.025, 0.5, 0.975)))) %>%
+                add_column(quantile = rep(c("2.5%", "50%", "97.5%"), nrow(.) / 3)) |>
+                pivot_wider(names_from = quantile,
+                            values_from = value))
 
-rm(all_draws)
-gc()
+  rm(all_draws)
+  gc()
+} else {
+  half_hr_est = NULL
+}
 
 hr_draws <-
   read_rds(here("analysis/data/derived_data",
@@ -882,7 +943,7 @@ load(here("analysis/data/derived_data",
                  str_replace(time_step, " ", "_"),
                  ".rda")))
 load(here("analysis/data/derived_data",
-          paste0("gam_preds",
+          paste0("gam_preds_",
                  str_replace(time_step, " ", "_"),
                  ".rda")))
 
@@ -959,14 +1020,33 @@ load(here("analysis/data/derived_data",
                  ".rda")))
 
 
-obs_fit_df <- half_hr_est |>
-  inner_join(ts_half_hr |>
-               filter(reviewed) |>
-               select(date_time,
-                      direction,
-                      full_hr,
-                      n_fish),
-             by = join_by(date_time, direction))
+if(time_step == "30 min") {
+  obs_fit_df <-
+    half_hr_est |>
+    inner_join(ts_half_hr |>
+                 filter(reviewed) |>
+                 select(date_time,
+                        direction,
+                        full_hr,
+                        n_fish),
+               by = join_by(date_time, direction))
+} else if(time_step == "1 hour") {
+  obs_fit_df <-
+    hourly_est |>
+    inner_join(all_draws |>
+                 filter(!is.na(obs_fish)) |>
+                 mutate(full_hr = if_else(prop_hr_obs == 1,
+                                          T, F)) |>
+                 select(date_hr,
+                        date_time,
+                        direction,
+                        prop_hr_obs,
+                        full_hr,
+                        n_fish = obs_fish) |>
+                 distinct(),
+               by = join_by(date_hr,
+                            direction))
+}
 
 obs_vs_fit_p <- obs_fit_df |>
   ggplot(aes(x = n_fish,
