@@ -1,7 +1,7 @@
 # Author: Kevin See
 # Purpose: Read in data from SONAR
 # Created: 3/15/22
-# Last Modified: 3/15/24
+# Last Modified: 5/14/24
 # Notes:
 
 #-----------------------------------------------------------------
@@ -109,12 +109,14 @@ sonar_raw <-
                           .))) %>%
   clean_names() %>%
   mutate(date_time = date + hour) %>%
+  mutate(across(time,
+                ~ str_replace(., "^24", "23"))) |>
   arrange(date_time,
           frame)
 
 # tz(sonar_raw$date) = tz(sonar_raw$date_time) = "America/Los_Angeles"
 
-# fix mismatches between hour and time
+# # fix mismatches between hour and time
 # sonar_raw |>
 #   filter(str_detect(time, "\\:")) |>
 #   filter(!between(ymd_hms(paste(date, time)),
@@ -126,18 +128,21 @@ sonar_raw <-
 #                                  ":",
 #                          str_pad(minute(.), 2,
 #                                  "right", "0")))) |>
+#   select(year,
+#          date,
+#          hour,
+#          time,
+#          date_time)
 #   clean_names("big_camel") |>
 #   write_csv(here("analysis/data/derived_data",
 #                  "MismatchTimes.csv"))
 
-
+# fix some mismatched times
 fixed_hours <-
   sonar_raw |>
   mutate(row_num = 1:n()) |>
   filter(str_detect(time, "\\:")) |>
   mutate(across(time,
-                ~ str_replace(., "^24", "23")),
-         across(time,
                 ~ if_else(str_count(., "\\:") == 1,
                         paste0(., ":00"),
                         .))) |>
@@ -596,16 +601,17 @@ ops_df <- tibble(time_scale = as_factor(c("Half Hour",
 #--------------------------------------------------
 # pull out records of fish detections
 #--------------------------------------------------
-sonar_fish <- sonar_raw %>%
+sonar_fish <-
+  sonar_raw %>%
   # made the decision to drop 2018 data for a variety of reasons
-  filter(year != 2018) |>
+  # filter(year != 2018) |>
   # decide to filter all observations after June 15
   filter(month(date) < 6 |
            (month(date) == 6 & day(date) <= 15)) %>%
   filter(data_recorded != "Partial",
          confidence == 1) %>%
   filter(!is.na(frame)) %>%
-  mutate(sthd_length = if_else(length > 67, T, F)) %>%
+  # mutate(sthd_length = if_else(length > 67, T, F)) %>%
   mutate(notes = time,
          across(time,
                 hms))
@@ -692,7 +698,8 @@ sonar_fish <- sonar_raw %>%
 
 # using new file from Kathryn Sutton
 # spp_comp_file <- "Dungeness_sppcomp_data_2023_FINAL.xlsx"
-spp_comp_file <- "Dungeness_sppcomp_data_2023_FINAL_KSupdate03012024.xlsx"
+# spp_comp_file <- "Dungeness_sppcomp_data_2023_FINAL_KSupdate03012024.xlsx"
+spp_comp_file <- "Dungeness_sppcomp_data_2023_FINAL_BC_KS05082024.xlsx"
 
 spp_comp <-
   read_excel(here("analysis/data/raw_data",
@@ -747,9 +754,9 @@ spp_comp <-
            .after = "poh_length_mm") |>
   mutate(across(gear,
                 str_to_lower),
-         across(gear,
-                ~ recode(.,
-                         "gn" = "gill net")),
+         # across(gear,
+         #        ~ recode(.,
+         #                 "gn" = "gill net")),
          across(site,
                 str_to_title),
          across(site,
@@ -768,8 +775,128 @@ spp_comp <-
          across(site,
                 ~ str_replace_all(., "Gage", "Gauge")),
          across(site,
-                ~ str_remove(., "\\.$")))
+                ~ str_remove(., "\\.$"))) |>
+  mutate(across(c(species,
+                  floy_tag_color),
+                str_to_title),
+         across(species,
+                ~ case_when(count == "NO CATCH" ~ "No Catch",
+                            .default = .)),
+         across(count,
+                ~ case_when(str_detect(., "-") ~ str_split(., "-", simplify = T)[,1],
+                            .default = .)),
+         across(count,
+                as.numeric)) |>
+  # mutate(across(floy_tag_number,
+  #               ~ case_match(.,
+  #                            "89/90" ~ "0089/0090",
+  #                            "90/89" ~ "0089/0090",
+  #                            "-" ~ NA_character_,
+  #                            .default = .)),
+  #        across(recapture,
+  #               ~ case_match(.,
+  #                            "Yes" ~ "Y",
+  #                            "-" ~ NA_character_,
+  #                            .default = .))) |>
+mutate(across(starts_with("recapture"),
+              ~ case_when(. == "Y" ~ TRUE,
+                          . == "N" ~ FALSE,
+                          .default = NA))) |>
+  arrange(date,
+          species,
+          count)
 
+# any fish described as a recapture in the comments?
+spp_comp |>
+  filter(str_detect(comments, regex("recap", ignore_case = T)) |
+           recapture_prev_year |
+           recapture_this_year |
+           (floy_tag_number %in% floy_tag_number[duplicated(floy_tag_number)] &
+              !is.na(floy_tag_number))) |>
+  select(date, species,
+         count,
+         site,
+         contains("recapture"),
+         contains("floy_tag"),
+         # scale_card_number,
+         fork_length_cm,
+         comments) |>
+  as.data.frame()
+
+# fish without a length?
+miss_length <-
+  spp_comp |>
+  filter(species != "No Catch",
+         is.na(fork_length_cm),
+         recapture_this_year)
+
+miss_length |>
+  as.data.frame()
+# all missing lengths are recaps, according to comments, and most are bull trout
+
+# get all known bull trout lengths
+known_bt_lngth <-
+  spp_comp |>
+  filter(species == "Bull Trout",
+         !is.na(fork_length_cm)) |>
+  select(known_date = date,
+         species,
+         floy_tag_number,
+         old_fl = fork_length_cm) |>
+  distinct()
+
+
+# fill in missing lengths for bull trout
+miss_length_bt <-
+  miss_length |>
+  filter(species == "Bull Trout") |>
+  left_join(known_bt_lngth,
+            by = join_by(species,
+                         floy_tag_number,
+                         closest(date >= known_date))) |>
+  mutate(across(fork_length_cm,
+                ~ case_when(is.na(.) ~ old_fl,
+                            .default = .))) |>
+  select(all_of(names(spp_comp)))
+
+# one steelhead recap with missing length
+miss_length |>
+  filter(species == "Steelhead") |>
+  as.data.frame()
+
+# look at the initial record for that fish
+spp_comp |>
+  filter(date == ymd(20220309),
+         species == "Steelhead") |>
+  as.data.frame()
+
+# fill in missing lengths for steelhead
+miss_length_sh <-
+  miss_length |>
+  filter(species == "Steelhead") |>
+  left_join(spp_comp |>
+              filter(tissue_number_bar_code_number == "22BJ0008") |>
+              select(known_date = date,
+                     species,
+                     old_fl = fork_length_cm) |>
+              distinct(),
+            by = join_by(species,
+                         closest(date >= known_date))) |>
+  mutate(across(fork_length_cm,
+                ~ case_when(is.na(.) ~ old_fl,
+                            .default = .))) |>
+  select(all_of(names(spp_comp)))
+
+
+
+spp_comp <-
+  spp_comp |>
+  anti_join(miss_length) |>
+  bind_rows(miss_length_bt,
+            miss_length_sh) |>
+  arrange(date,
+          species,
+          count)
 
 
 # spp_comp |>
@@ -796,8 +923,9 @@ spp_comp <-
 spp_fl <- spp_comp |>
 # spp_fl <- spp_comp_old |>
   filter(rmu < 6,
-         month(date) <= 6,
-         str_detect(site, "Gray Wolf", negate = TRUE)) |>
+         (month(date) <= 6 |
+            month(date) == 6 & mday(date) <= 15),
+         (is.na(site) | str_detect(site, "Gray Wolf", negate = TRUE))) |>
   select(date,
          species,
          gear,
@@ -845,7 +973,8 @@ load(here("analysis/data/derived_data",
           "ops_data.rda"))
 
 half_hr_periods %>%
-  filter(month(date) < 6) |>
+  filter(month(date) < 6 |
+           (month(date) == 6 & day(date) <= 15)) |>
   mutate(hr = as.numeric(hour) / (60*60)) %>%
   mutate(date = as.Date(paste(month(date), mday(date)), format = "%m %d")) %>%
   ggplot(aes(x = date,
@@ -876,7 +1005,8 @@ ggsave(here("analysis/figures",
        bg = "transparent")
 
 half_hr_periods %>%
-  filter(month(date) < 6) |>
+  filter(month(date) < 6 |
+           (month(date) == 6 & day(date) <= 15)) |>
   mutate(hr = as.numeric(hour) / (60*60),
          half_hr = as.numeric(time) / (60*60)) %>%
   mutate(date = as.Date(paste(month(date), mday(date)), format = "%m %d")) %>%

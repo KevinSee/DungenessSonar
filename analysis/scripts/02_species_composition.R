@@ -53,7 +53,8 @@ fl_mod <-
 
 #-----------------------------------------------------------------
 # extract all steelhead from sonar data: big fish and small ones that are predicted to be steelhead
-sonar_pred_spp <- sonar_fish %>%
+sonar_pred_spp <-
+  sonar_fish %>%
   filter(confidence == 1) |>
   rename(fork_length_cm = length) %>%
   mutate(fl_z = (fork_length_cm - unique(spp_fl$fl_mean)) / unique(spp_fl$fl_sd)) %>%
@@ -69,9 +70,11 @@ sonar_pred_spp <- sonar_fish %>%
          p_beta = p_alpha * (prob_sthd^-1 - 1))
 
 
-sonar_sthd <- sonar_pred_spp |>
+sonar_sthd <-
+  sonar_pred_spp |>
   select(-c(p_alpha, p_beta)) |>
-  filter(sthd_length | prob_sthd > 0.5)
+  filter(prob_sthd > 0.5)
+  # filter(sthd_length | prob_sthd > 0.5)
 
 
 #-----------------------------------------------------------------
@@ -120,9 +123,9 @@ plot_smooths(fl_mod,
 
 # what is the fork length when 50% of being a steelhead?
 p_pred = 0.5
-pred_tab <- crossing(fork_length_cm = seq(35, 75, by = 1),
-                     survey_date = seq(ymd(20210203),
-                                       ymd(20210701),
+pred_tab <- crossing(fork_length_cm = seq(35, 90, by = 1),
+                     survey_date = seq(ymd(20220201),
+                                       ymd(20220701),
                                        by = "1 days")) %>%
   mutate(fl_z = (fork_length_cm - unique(spp_fl$fl_mean)) / unique(spp_fl$fl_sd),
          jday = yday(survey_date)) %>%
@@ -132,13 +135,17 @@ pred_tab <- crossing(fork_length_cm = seq(35, 75, by = 1),
                     se.fit = T) %>%
               as_tibble() %>%
               select(prob_sthd = fit,
-                     prob_se = se.fit))
+                     prob_se = se.fit)) |>
+  rename(plot_date = survey_date)
+
+fl_min = 40
+fl_max = 75
 
 pred_tab %>%
-  filter(month(survey_date) < 6 |
-           (month(survey_date) == 6 & day(survey_date) <= 15)) |>
-  filter(between(fork_length_cm, 35, 75)) |>
-  ggplot(aes(x = survey_date,
+  filter(month(plot_date) < 6 |
+           (month(plot_date) == 6 & day(plot_date) <= 15)) |>
+  filter(between(fork_length_cm, fl_min, fl_max)) |>
+  ggplot(aes(x = plot_date,
              y = fork_length_cm,
              fill = prob_sthd)) +
   geom_tile() +
@@ -148,25 +155,25 @@ pred_tab %>%
   # scale_fill_viridis_c(name = "Probability of Being a Steelhead",
   #                      guide = guide_colorbar(barwidth = 12)) +
   scale_fill_continuous_diverging(name = "Probability of Being a Steelhead",
-                                  # palette = "Purple-Green",
-                                  palette = "Cork",
+                                  palette = "Purple-Green",
+                                  # palette = "Cork",
                                   # palette = "Blue-Red 3",
                                   # rev = T,
                                   mid = 0.5,
                                   guide = guide_colorbar(barwidth = 12)) +
   geom_line(data = pred_tab %>%
-              filter(month(survey_date) < 6 |
-                       (month(survey_date) == 6 & day(survey_date) <= 15)) |>
-              filter(between(fork_length_cm, 35, 75)) |>
+              filter(month(plot_date) < 6 |
+                       (month(plot_date) == 6 & day(plot_date) <= 15)) |>
+              filter(between(fork_length_cm, fl_min, fl_max)) |>
               filter(prob_sthd >= p_pred) %>%
-              group_by(survey_date) %>%
+              group_by(plot_date) %>%
               filter(fork_length_cm == min(fork_length_cm)) %>%
-              arrange(survey_date, fork_length_cm),
+              arrange(plot_date, fork_length_cm),
             color = "black",
             linewidth = 2) +
-  geom_hline(yintercept = c(45, 67),
-             linetype = 2,
-             color = 'darkgray') +
+  # geom_hline(yintercept = c(45, 67),
+  #            linetype = 2,
+  #            color = 'darkgray') +
   labs(x = "Date",
        y = "Fork Length (cm)") +
   theme(text = element_text(size = 20),
@@ -189,18 +196,33 @@ sonar_pred_spp |>
              y = fork_length_cm,
              color = prob_sthd)) +
   geom_point() +
+  # geom_point(aes(size = 1/prob_se)) +
   scale_color_continuous_diverging(name = "Probability of Being a Steelhead",
-                                   # palette = "Purple-Green",
-                                   palette = "Cork",
+                                   palette = "Purple-Green",
+                                   # palette = "Cork",
                                    # palette = "Blue-Red 3",
                                    # palette = "Berlin",
                                    # rev = T,
                                    mid = 0.5,
                                    guide = guide_colorbar(barwidth = 12)) +
-  geom_hline(yintercept = c(45, 67),
-             linetype = 2,
-             color = 'darkgray') +
+  # geom_hline(yintercept = c(45, 67),
+  #            linetype = 2,
+  #            color = 'darkgray') +
+  geom_point(data = spp_fl |>
+               mutate(plot_date = ymd(20211231) + days(jday),
+                      across(species,
+                             ~ if_else(. != "Steelhead",
+                                       "Not Steelhead",
+                                       .))),
+             aes(shape = species),
+             color = "gray20",
+             fill = "gold",
+             size = 3) +
+  scale_shape_manual(values = c("Steelhead" = 21,
+                                "Not Steelhead" = 24),
+                     name = "Obs. Species") +
   theme(legend.position = "bottom") +
+  guides(size = "none") +
   labs(x = "Date",
        y = "Fork Length (cm)") +
   theme(text = element_text(size = 20))#,

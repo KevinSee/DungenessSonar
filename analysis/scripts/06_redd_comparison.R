@@ -183,6 +183,7 @@ save(redd_est,
                  "redd_comp.rda"))
 
 #-----------------------------------------------------------------
+# perecent difference compared to redd estimate
 comp_est |>
   filter(!is.na(redd_est)) |>
   select(-c(se:`97.5%`)) |>

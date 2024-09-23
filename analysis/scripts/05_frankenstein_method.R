@@ -1,7 +1,7 @@
 # Author: Kevin See
 # Purpose: Use multiple methods including regression to finalize estimates
 # Created: 4/28/23
-# Last Modified: 3/18/24
+# Last Modified: 5/24/24
 # Notes:
 
 #-----------------------------------------------------------------
@@ -498,7 +498,7 @@ ts_reviewed |>
          saw_fish = if_else(total > 0,
                             T, F)) |>
   ggplot(aes(x = op_perc)) +
-  geom_histogram(aes(fill = op_thres)) +
+  geom_histogram(aes(fill = above_thres)) +
   scale_x_continuous(limits = c(0, 1))
 
 ts_expanded <- ts_reviewed |>

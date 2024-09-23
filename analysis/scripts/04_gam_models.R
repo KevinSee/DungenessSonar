@@ -1,7 +1,7 @@
 # Author: Kevin See
 # Purpose: Fit GAM to time-series with missing data
 # Created: 4/21/23
-# Last Modified: 3/18/24
+# Last Modified: 5/14/24
 # Notes:
 
 #-----------------------------------------------------------------
@@ -24,6 +24,11 @@ theme_set(theme_bw())
 # load data
 load(here("analysis/data/derived_data",
           "time_series.rda"))
+
+
+# drop 2018
+ts_half_hr |>
+  filter(year != 2018)
 
 # # quick plot of data
 # imputeTS::ggplot_na_imputations(ts_df$ts[[4]],
@@ -163,6 +168,8 @@ disc_day_df |>
 up_data <-
   ts_half_hr |>
   filter(direction == "up") |>
+  # drop 2018
+  filter(year != 2018) |>
   mutate(day_of_year = yday(date),
          across(day_of_year,
                 as.integer),
@@ -180,6 +187,7 @@ up_data <-
 down_data <-
   ts_half_hr |>
   filter(direction == "down") |>
+  filter(year %in% unique(up_data$year)) |>
   mutate(day_of_year = yday(date),
          across(day_of_year,
                 as.integer),
@@ -292,7 +300,9 @@ down_data %<>%
 #                      mean_discharge),
 #             by = join_by(date))
 
-
+#-----------------------------------
+# fit models
+#-----------------------------------
 # upstream model
 up_mod <- gam(total_observed_hr ~
                 s(hour_of_day, bs = "cr") +
@@ -564,6 +574,40 @@ if(sum(str_detect(newdata$date_time[1:10], ":30:")) > 0){
                             . + 0.5,
                             .)))
 }
+
+pred_up <-
+  predict(up_mod,
+          newdata = newdata,
+          type = "response",
+          se.fit = T,
+          unconditional = TRUE) |>
+  as_tibble() |>
+  rename(pred = fit,
+         se = se.fit) |>
+  add_column(direction = "up",
+             .before = 0)
+
+pred_down <-
+  predict(down_mod,
+          newdata = newdata,
+          type = "response",
+          se.fit = T,
+          unconditional = TRUE) |>
+  as_tibble() |>
+  rename(pred = fit,
+         se = se.fit) |>
+  add_column(direction = "down",
+             .before = 0)
+
+pred_all <-
+  newdata |>
+  bind_cols(pred_up) |>
+  bind_rows(newdata |>
+              bind_cols(pred_down)) |>
+  relocate(direction,
+           .after = "year") |>
+  arrange(date_time,
+          direction)
 
 
 # predict steelhead moving upstream
@@ -980,6 +1024,7 @@ hourly_est |>
 daily_est |>
   filter(month(date) < 6 |
            (month(date) == 6 & day(date) <= 15)) |>
+  filter(mean > 0) |>
   mutate(Year = year(date),
          across(Year,
                 as.factor),
@@ -998,10 +1043,18 @@ daily_est |>
               alpha = 0.4) +
   geom_line() +
   # scale_y_continuous(limits = c(NA, 40)) +
+  scale_y_continuous(trans = "log",
+                     limits = c(0.5, NA),
+                     breaks = c(1, 5, 10,
+                                25,
+                                50,
+                                100,
+                                200)) +
+                     # breaks = scales::breaks_pretty(n = 10)) +
   facet_wrap(~ direction) +
   theme(legend.position = "bottom")+
   labs(x = "Date",
-       y = "Daily Estimate of Steelhead") +
+       y = "Daily Estimate of Steelhead (log)") +
   theme(panel.background = element_rect(fill='transparent'),
         plot.background = element_rect(fill='transparent', color=NA),
         legend.background = element_rect(fill='transparent'),

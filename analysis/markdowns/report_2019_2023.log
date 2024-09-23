@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 23.5) (preloaded format=pdflatex 2023.9.8)  25 MAR 2024 15:56
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 23.5) (preloaded format=pdflatex 2023.9.8)  26 JUL 2024 11:56
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -627,6 +627,9 @@ File: l3backend-pdftex.def 2023-04-19 L3 backend support: PDF output (pdfTeX)
 
 LaTeX Warning: Label `tab:spp-cnts-date' multiply defined.
 
+
+LaTeX Warning: Label `tab:spp-cnts-date' multiply defined.
+
 )
 \openout1 = `report_2019_2023.aux'.
 
@@ -794,84 +797,78 @@ eek1477/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-ec.enc} <../templat
 es/wdfwlogo_clr.png>]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 174.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 172.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [2]
 <../images/sonar_mapRKM.jpg, id=63, 433.62pt x 433.62pt>
 File: ../images/sonar_mapRKM.jpg Graphic file (type jpg)
 <use ../images/sonar_mapRKM.jpg>
-Package pdftex.def Info: ../images/sonar_mapRKM.jpg  used on input line 185.
+Package pdftex.def Info: ../images/sonar_mapRKM.jpg  used on input line 187.
 (pdftex.def)             Requested size: 422.80096pt x 422.80096pt.
 <../images/site_map.png, id=67, 421.575pt x 401.24907pt>
 File: ../images/site_map.png Graphic file (type png)
 <use ../images/site_map.png>
-Package pdftex.def Info: ../images/site_map.png  used on input line 198.
+Package pdftex.def Info: ../images/site_map.png  used on input line 200.
 (pdftex.def)             Requested size: 328.8336pt x 312.97913pt.
 <../images/setup_2018.jpg, id=68, 289.737pt x 217.1385pt>
 File: ../images/setup_2018.jpg Graphic file (type jpg)
 <use ../images/setup_2018.jpg>
-Package pdftex.def Info: ../images/setup_2018.jpg  used on input line 207.
+Package pdftex.def Info: ../images/setup_2018.jpg  used on input line 209.
 (pdftex.def)             Requested size: 289.74954pt x 217.1479pt.
-<../images/setup_2019.jpg, id=71, 322.9155pt x 242.1045pt>
-File: ../images/setup_2019.jpg Graphic file (type jpg)
-<use ../images/setup_2019.jpg>
-Package pdftex.def Info: ../images/setup_2019.jpg  used on input line 220.
-(pdftex.def)             Requested size: 322.92455pt x 242.1113pt.
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-<../figures/op-fig-1.pdf, id=76, 505.89pt x 274.02374pt>
-File: ../figures/op-fig-1.pdf Graphic file (type pdf)
-<use ../figures/op-fig-1.pdf>
-Package pdftex.def Info: ../figures/op-fig-1.pdf  used on input line 249.
-(pdftex.def)             Requested size: 469.76265pt x 254.45477pt.
-<../figures/review-fig-1.pdf, id=77, 505.89pt x 274.02374pt>
-File: ../figures/review-fig-1.pdf Graphic file (type pdf)
-<use ../figures/review-fig-1.pdf>
-Package pdftex.def Info: ../figures/review-fig-1.pdf  used on input line 255.
-(pdftex.def)             Requested size: 469.76265pt x 254.45477pt.
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 259.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 218.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [3]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 259.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 218.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [4 <../images/sonar_mapRKM.jpg>]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 259.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 218.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [5 <../images/site_map.png> <../images/setup_2018.jpg>]
+<../images/setup_2019.jpg, id=88, 322.9155pt x 242.1045pt>
+File: ../images/setup_2019.jpg Graphic file (type jpg)
+<use ../images/setup_2019.jpg>
+Package pdftex.def Info: ../images/setup_2019.jpg  used on input line 222.
+(pdftex.def)             Requested size: 322.92455pt x 242.1113pt.
+<../figures/op-fig-1.pdf, id=93, 505.89pt x 274.02374pt>
+File: ../figures/op-fig-1.pdf Graphic file (type pdf)
+<use ../figures/op-fig-1.pdf>
+Package pdftex.def Info: ../figures/op-fig-1.pdf  used on input line 251.
+(pdftex.def)             Requested size: 469.76265pt x 254.45477pt.
+<../figures/review-fig-1.pdf, id=94, 505.89pt x 274.02374pt>
+File: ../figures/review-fig-1.pdf Graphic file (type pdf)
+<use ../figures/review-fig-1.pdf>
+Package pdftex.def Info: ../figures/review-fig-1.pdf  used on input line 257.
+(pdftex.def)             Requested size: 469.76265pt x 254.45477pt.
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 259.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 261.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
-[6 <../images/setup_2019.jpg> <../figures/op-fig-1.pdf>]
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
+[6 <../images/setup_2019.jpg>]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 284.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 261.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
-[7 <../figures/review-fig-1.pdf>]
+[7 <../figures/op-fig-1.pdf> <../figures/review-fig-1.pdf>]
 LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 2
-90.
+94.
 (C:\Users\seek1477\AppData\Local\Programs\MiKTeX\tex/latex/lm\ts1lmr.fd
 File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 314.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 313.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [8{C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-ts1.en
@@ -879,150 +876,143 @@ c}{C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathsy
 .enc}]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 353.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 348.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [9]
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-<../figures/cv-lgth-hist-1.pdf, id=136, 433.62pt x 361.35pt>
-File: ../figures/cv-lgth-hist-1.pdf Graphic file (type pdf)
-<use ../figures/cv-lgth-hist-1.pdf>
-Package pdftex.def Info: ../figures/cv-lgth-hist-1.pdf  used on input line 500.
-
-(pdftex.def)             Requested size: 433.61894pt x 361.34912pt.
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 505.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 371.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [10]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 505.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 445.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
-[11 <../figures/cv-lgth-hist-1.pdf>]
-<../figures/lgth-comp-fig-1.pdf, id=158, 433.62pt x 361.35pt>
-File: ../figures/lgth-comp-fig-1.pdf Graphic file (type pdf)
-<use ../figures/lgth-comp-fig-1.pdf>
-Package pdftex.def Info: ../figures/lgth-comp-fig-1.pdf  used on input line 510
-.
+[11]
+<../figures/cv-lgth-hist-1.pdf, id=147, 433.62pt x 361.35pt>
+File: ../figures/cv-lgth-hist-1.pdf Graphic file (type pdf)
+<use ../figures/cv-lgth-hist-1.pdf>
+Package pdftex.def Info: ../figures/cv-lgth-hist-1.pdf  used on input line 502.
+
 (pdftex.def)             Requested size: 433.61894pt x 361.34912pt.
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 512.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 509.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [12]
+File: ../templates/wdfwlogo_clr.png Graphic file (type png)
+<use ../templates/wdfwlogo_clr.png>
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 509.
+
+(pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
+[13 <../figures/cv-lgth-hist-1.pdf>]
+<../figures/lgth-comp-fig-1.pdf, id=167, 433.62pt x 361.35pt>
+File: ../figures/lgth-comp-fig-1.pdf Graphic file (type pdf)
+<use ../figures/lgth-comp-fig-1.pdf>
+Package pdftex.def Info: ../figures/lgth-comp-fig-1.pdf  used on input line 512
+.
+(pdftex.def)             Requested size: 433.61894pt x 361.34912pt.
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 541.
-
-(pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
-[13]
-File: ../templates/wdfwlogo_clr.png Graphic file (type png)
-<use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 541.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 543.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [14 <../figures/lgth-comp-fig-1.pdf>]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 636.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 658.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [15]
-<../figures/fl-hist-1.pdf, id=188, 433.62pt x 289.08pt>
-File: ../figures/fl-hist-1.pdf Graphic file (type pdf)
-<use ../figures/fl-hist-1.pdf>
-Package pdftex.def Info: ../figures/fl-hist-1.pdf  used on input line 640.
-(pdftex.def)             Requested size: 433.63878pt x 289.09251pt.
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 648.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 658.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [16]
-<../figures/spp-pred-1.pdf, id=196, 433.62pt x 433.62pt>
-File: ../figures/spp-pred-1.pdf Graphic file (type pdf)
-<use ../figures/spp-pred-1.pdf>
-Package pdftex.def Info: ../figures/spp-pred-1.pdf  used on input line 652.
-(pdftex.def)             Requested size: 433.63878pt x 433.63878pt.
+<../figures/fl-hist-1.pdf, id=193, 433.62pt x 289.08pt>
+File: ../figures/fl-hist-1.pdf Graphic file (type pdf)
+<use ../figures/fl-hist-1.pdf>
+Package pdftex.def Info: ../figures/fl-hist-1.pdf  used on input line 662.
+(pdftex.def)             Requested size: 433.63878pt x 289.09251pt.
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 689.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 669.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [17 <../figures/fl-hist-1.pdf>]
+<../figures/spp-pred-1.pdf, id=205, 433.62pt x 433.62pt>
+File: ../figures/spp-pred-1.pdf Graphic file (type pdf)
+<use ../figures/spp-pred-1.pdf>
+Package pdftex.def Info: ../figures/spp-pred-1.pdf  used on input line 672.
+(pdftex.def)             Requested size: 433.63878pt x 433.63878pt.
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 689.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 710.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [18 <../figures/spp-pred-1.pdf>]
-<../figures/up-marg-1.pdf, id=222, 433.62pt x 433.62pt>
+<../figures/up-marg-1.pdf, id=224, 433.62pt x 433.62pt>
 File: ../figures/up-marg-1.pdf Graphic file (type pdf)
 <use ../figures/up-marg-1.pdf>
-Package pdftex.def Info: ../figures/up-marg-1.pdf  used on input line 720.
+Package pdftex.def Info: ../figures/up-marg-1.pdf  used on input line 755.
 (pdftex.def)             Requested size: 433.63878pt x 433.63878pt.
-<../figures/down-marg-1.pdf, id=223, 433.62pt x 433.62pt>
+<../figures/down-marg-1.pdf, id=225, 433.62pt x 433.62pt>
 File: ../figures/down-marg-1.pdf Graphic file (type pdf)
 <use ../figures/down-marg-1.pdf>
-Package pdftex.def Info: ../figures/down-marg-1.pdf  used on input line 726.
+Package pdftex.def Info: ../figures/down-marg-1.pdf  used on input line 761.
 (pdftex.def)             Requested size: 433.63878pt x 433.63878pt.
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 730.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 765.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
-[19{C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathi
-t.enc}]
+[19]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 730.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 765.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [20 <../figures/up-marg-1.pdf>]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 730.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 765.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [21 <../figures/down-marg-1.pdf>]
-<../figures/redd-fig-1.pdf, id=261, 433.62pt x 361.35pt>
+<../figures/redd-fig-1.pdf, id=262, 433.62pt x 361.35pt>
 File: ../figures/redd-fig-1.pdf Graphic file (type pdf)
 <use ../figures/redd-fig-1.pdf>
-Package pdftex.def Info: ../figures/redd-fig-1.pdf  used on input line 757.
+Package pdftex.def Info: ../figures/redd-fig-1.pdf  used on input line 792.
 (pdftex.def)             Requested size: 433.61894pt x 361.34912pt.
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 762.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 797.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [22 <../figures/redd-fig-1.pdf>]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 779.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 812.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [23]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 793.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 823.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [24]
 File: ../templates/wdfwlogo_clr.png Graphic file (type png)
 <use ../templates/wdfwlogo_clr.png>
-Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 818.
+Package pdftex.def Info: ../templates/wdfwlogo_clr.png  used on input line 856.
 
 (pdftex.def)             Requested size: 53.61517pt x 34.13991pt.
 [25] (report_2019_2023.aux)
@@ -1035,28 +1025,26 @@ LaTeX Warning: There were multiply-defined labels.
 
  ) 
 Here is how much of TeX's memory you used:
- 15773 strings out of 475247
- 252806 string characters out of 5756377
- 1985801 words of memory out of 5000000
+ 15764 strings out of 475247
+ 252688 string characters out of 5756377
+ 2011801 words of memory out of 5000000
  36779 multiletter control sequences out of 15000+600000
- 625729 words of font info for 156 fonts, out of 8000000 for 9000
+ 620878 words of font info for 151 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 77i,16n,81p,1718b,580s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 77i,16n,81p,1991b,580s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx10
 .pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmb
 x12.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/
-lmbxi10.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/public
-/lm/lmmi10.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/pub
-lic/lm/lmr10.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/p
-ublic/lm/lmr12.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1
-/public/lm/lmr17.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/typ
-e1/public/lm/lmr7.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/ty
-pe1/public/lm/lmr8.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/t
-ype1/public/lm/lmri10.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/font
-s/type1/public/lm/lmsy10.pfb>
-Output written on report_2019_2023.pdf (25 pages, 2903849 bytes).
+lmr10.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/public/l
+m/lmr12.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/public
+/lm/lmr17.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/publ
+ic/lm/lmr7.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/pub
+lic/lm/lmr8.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1/pu
+blic/lm/lmri10.pfb><C:/Users/seek1477/AppData/Local/Programs/MiKTeX/fonts/type1
+/public/lm/lmsy10.pfb>
+Output written on report_2019_2023.pdf (25 pages, 2891215 bytes).
 PDF statistics:
- 426 PDF objects out of 1000 (max. 8388607)
- 75 named destinations out of 1000 (max. 500000)
- 37079 words of extra memory for PDF output out of 42996 (max. 10000000)
+ 422 PDF objects out of 1000 (max. 8388607)
+ 76 named destinations out of 1000 (max. 500000)
+ 35031 words of extra memory for PDF output out of 35830 (max. 10000000)
 
