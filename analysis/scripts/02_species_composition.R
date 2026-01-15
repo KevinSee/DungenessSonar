@@ -24,25 +24,71 @@ load(here("analysis/data/derived_data",
 load(here("analysis/data/derived_data",
           "spp_comp_data.rda"))
 
+# spp_fl <-
+#   spp_fl |>
+#   filter(month(date) >= 2)
+
 
 #-----------------------------------------------------------------
 # fit a GAM model
 fl_mod <-
   gam(spp_fct ~ s(fl_z, k = 5, m = 2, bs = "tp") +
-        s(jday, k = 5, m = 2, bs = "tp"),
+        s(jday,
+          # k = 5,
+          k = 4,
+          m = 2,
+          bs = "tp"),
       data = spp_fl,
       family = binomial)
 
+
 # fl_mod <-
 #   gam(spp_fct ~ s(fl_z, k = 5, m = 2, bs = "tp") +
-#         s(jday, year, bs = "fs"),
+#         s(jday, year,
+#           k = 3,
+#           m = 2,
+#           bs = "fs"),
 #       data = spp_fl |>
-#         mutate(year = year(date),
-#                across(year,
-#                       as.factor)),
+#         mutate(across(year,
+#                       as_factor)),
 #       family = binomial)
 
 
+
+# fl_mod <-
+#   gam(spp_fct ~
+#          s(fl_z,
+#            k = 5,
+#            m = 2,
+#            bs = "tp") +
+#          s(jday,
+#            k = 5,
+#            m = 2,
+#            bs = "tp") +
+#          s(jday, year,
+#            # k = 4,
+#            # m = 2,
+#            bs = "re"),
+#       data = spp_fl |>
+#         mutate(across(year,
+#                       as_factor)),
+#       family = binomial)
+
+# fl_mod <-
+#   gamm(spp_fct ~
+#         s(fl_z,
+#           k = 5,
+#           m = 2,
+#           bs = "tp") +
+#         s(jday,
+#           k = 5,
+#           m = 2,
+#           bs = "tp"),
+#        random = list(year = ~ jday),
+#       data = spp_fl |>
+#         mutate(across(year,
+#                       as_factor)),
+#       family = binomial)
 
 # fl_mod <-
 #   # gam(spp_fct ~ s(fl_z, jday, k = 5, m = 2, bs = "tp"),
@@ -104,7 +150,50 @@ plot_smooths(fl_mod,
   labs(x = "Julian Day",
        y = "Probability of Being a Steelhead")
 
+library(tidygam)
 
+pred_tab <-
+  tidygam::predict_gam(fl_mod,
+            length_out = 500,
+            values = list(fl_z = seq(-2, 2, length.out = 60)),
+            series = c("jday",
+                       "fl_z"),
+            tran_fun = boot::inv.logit) |>
+  mutate(plot_date = ymd(20220101) + ddays(jday),
+         fork_length_cm = fl_z * unique(spp_fl$fl_sd) + unique(spp_fl$fl_mean)) |>
+  as_tibble()
+
+fl_min = 40
+fl_max = 85
+p_pred = .5
+
+pred_tab |>
+  ggplot(aes(x = plot_date,
+             y = fl_z)) +
+  geom_raster(aes(fill = spp_fct)) +
+  scale_fill_continuous_diverging(name = "Probability of Being a Steelhead",
+                                  palette = "Purple-Green",
+                                  # palette = "Cork",
+                                  # palette = "Blue-Red 3",
+                                  # rev = T,
+                                  mid = 0.5,
+                                  guide = guide_colorbar(barwidth = 12)) +
+  geom_line(data = pred_tab %>%
+              filter(month(plot_date) < 6 |
+                       (month(plot_date) == 6 & day(plot_date) <= 15)) |>
+              filter(between(fork_length_cm, fl_min, fl_max)) |>
+              filter(spp_fct >= p_pred) %>%
+              group_by(plot_date) %>%
+              filter(fork_length_cm == min(fork_length_cm)) %>%
+              arrange(plot_date, fork_length_cm) |>
+              ungroup(),
+            color = "black",
+            linewidth = 2) +
+  # geom_hline(yintercept = c(45, 67),
+  #            linetype = 2,
+  #            color = 'darkgray') +
+  labs(x = "Julian Day",
+       y = "Fork Length (cm)")
 
 # get_gam_predictions(fl_mod,
 #                     series = fl_z,
@@ -124,7 +213,7 @@ plot_smooths(fl_mod,
 # what is the fork length when 50% of being a steelhead?
 p_pred = 0.5
 pred_tab <- crossing(fork_length_cm = seq(35, 90, by = 1),
-                     survey_date = seq(ymd(20220201),
+                     survey_date = seq(ymd(20220101),
                                        ymd(20220701),
                                        by = "1 days")) %>%
   mutate(fl_z = (fork_length_cm - unique(spp_fl$fl_mean)) / unique(spp_fl$fl_sd),
@@ -168,6 +257,7 @@ pred_tab %>%
               filter(prob_sthd >= p_pred) %>%
               group_by(plot_date) %>%
               filter(fork_length_cm == min(fork_length_cm)) %>%
+              ungroup() |>
               arrange(plot_date, fork_length_cm),
             color = "black",
             linewidth = 2) +

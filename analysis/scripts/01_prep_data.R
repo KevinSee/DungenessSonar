@@ -1,7 +1,7 @@
 # Author: Kevin See
 # Purpose: Read in data from SONAR
 # Created: 3/15/22
-# Last Modified: 5/14/24
+# Last Modified: 2/18/25
 # Notes:
 
 #-----------------------------------------------------------------
@@ -21,66 +21,80 @@ theme_set(theme_bw())
 #-----------------------------------------------------------------
 # sonar data
 sonar_raw <-
-  read_csv(here("analysis/data/raw_data",
-                           "2018 sonar.csv"),
-                      show_col_types = FALSE) %>%
-  mutate(across(Hour,
-                hm),
-         across(c(Length,
-                  Frame),
-                as.numeric)) %>%
-  bind_rows(read_csv(here("analysis/data/raw_data",
-                          "2019 sonar.csv"),
-                     show_col_types = FALSE) %>%
-              mutate(across(Hour,
-                            hms))) %>%
-  bind_rows(read_csv(here("analysis/data/raw_data",
-                          "2020 sonar.csv"),
-                     show_col_types = FALSE) %>%
-              mutate(across(Hour,
-                            ~ str_pad(.,
-                                      width = 5,
-                                      side = "left",
-                                      pad = "0"))) %>%
-              mutate(across(Hour,
-                            hm)) %>%
-              rename(comments = "Comments/Notes") %>%
-              clean_names("upper_camel")) %>%
-  bind_rows(read_csv(here("analysis/data/raw_data",
-                          "2021 sonar.csv"),
-                     show_col_types = FALSE) %>%
-              mutate(across(Hour,
-                            ~ hm(paste(str_sub(., 1,2),
-                                       str_sub(., 3, 4),
-                                       sep = ":")))) %>%
-              rename(comments = "Comments/Notes") %>%
-              clean_names("upper_camel")) %>%
-  bind_rows(read_csv(here("analysis/data/raw_data",
-                          "2022 sonar.csv"),
-                     show_col_types = FALSE) %>%
-              mutate(across(
-                Hour,
-                ~ str_remove(., ":")
-              )) |>
-              mutate(across(
-                Hour,
-                ~ hm(paste(str_sub(., 1,2),
-                           str_sub(., 3,4),
-                           sep = ":")))) %>%
-              clean_names("upper_camel")) %>%
-  bind_rows(read_csv(here("analysis/data/raw_data",
-                          "2023 sonar.csv"),
-                     show_col_types = FALSE) %>%
-              mutate(across(
-                Hour,
-                ~ str_remove(., ":")
-              )) |>
-              mutate(across(
-                Hour,
-                ~ hm(paste(str_sub(., 1,2),
-                           str_sub(., 3,4),
-                           sep = ":")))) %>%
-              clean_names("upper_camel")) |>
+  bind_rows(
+    read_csv(here("analysis/data/raw_data",
+                  "2018 sonar.csv"),
+             show_col_types = FALSE) %>%
+      mutate(across(Hour,
+                    hm),
+             across(c(Length,
+                      Frame),
+                    as.numeric)),
+    read_csv(here("analysis/data/raw_data",
+                  "2019 sonar.csv"),
+             show_col_types = FALSE) %>%
+      mutate(across(Hour,
+                    hms)),
+    read_csv(here("analysis/data/raw_data",
+                  "2020 sonar.csv"),
+             show_col_types = FALSE) %>%
+      mutate(across(Hour,
+                    ~ str_pad(.,
+                              width = 5,
+                              side = "left",
+                              pad = "0"))) %>%
+      mutate(across(Hour,
+                    hm)) %>%
+      rename(comments = "Comments/Notes") %>%
+      clean_names("upper_camel"),
+    read_csv(here("analysis/data/raw_data",
+                  "2021 sonar.csv"),
+             show_col_types = FALSE) %>%
+      mutate(across(Hour,
+                    ~ hm(paste(str_sub(., 1,2),
+                               str_sub(., 3, 4),
+                               sep = ":")))) %>%
+      rename(comments = "Comments/Notes") %>%
+      clean_names("upper_camel"),
+    read_csv(here("analysis/data/raw_data",
+                  "2022 sonar.csv"),
+             show_col_types = FALSE) %>%
+      mutate(across(
+        Hour,
+        ~ str_remove(., ":")
+      )) |>
+      mutate(across(
+        Hour,
+        ~ hm(paste(str_sub(., 1,2),
+                   str_sub(., 3,4),
+                   sep = ":")))) %>%
+      clean_names("upper_camel"),
+    read_csv(here("analysis/data/raw_data",
+                  "2023 sonar.csv"),
+             show_col_types = FALSE) %>%
+      mutate(across(
+        Hour,
+        ~ str_remove(., ":")
+      )) |>
+      mutate(across(
+        Hour,
+        ~ hm(paste(str_sub(., 1,2),
+                   str_sub(., 3,4),
+                   sep = ":")))) %>%
+      clean_names("upper_camel"),
+    read_csv(here("analysis/data/raw_data",
+                  "2024 sonar.csv"),
+             show_col_types = FALSE) %>%
+      mutate(across(
+        Hour,
+        ~ str_remove(., ":")
+      )) |>
+      mutate(across(
+        Hour,
+        ~ hm(paste(str_sub(., 1,2),
+                   str_sub(., 3,4),
+                   sep = ":")))) %>%
+      clean_names("upper_camel")) |>
   filter(!is.na(Year)) %>%
   # mutate(across(Date,
   #               anytime)) |>
@@ -111,7 +125,8 @@ sonar_raw <-
   mutate(date_time = date + hour) %>%
   mutate(across(time,
                 ~ str_replace(., "^24", "23"))) |>
-  arrange(date_time,
+  arrange(year,
+          date_time,
           frame)
 
 # tz(sonar_raw$date) = tz(sonar_raw$date_time) = "America/Los_Angeles"
@@ -200,7 +215,8 @@ sonar_raw <-
 missing_first_30 <-
   sonar_raw |>
   filter(data_reviewed == "Second 30") |>
-  select(data_recorded_2 = data_recorded,
+  select(year,
+         data_recorded_2 = data_recorded,
          data_reviewed_2 = data_reviewed,
          date,
          date_time) |>
@@ -210,7 +226,8 @@ missing_first_30 <-
   mutate(has_second_30 = T) |>
   full_join(sonar_raw |>
               filter(minute(date_time) == 0) |>
-              select(date,
+              select(year,
+                     date,
                      date_time) |>
               distinct() |>
               mutate(has_first_30 = T)) |>
@@ -244,10 +261,10 @@ sonar_raw |>
 sonar_raw <-
   sonar_raw |>
   bind_rows(missing_first_30 |>
-              select(data_recorded = data_recorded_2,
+              select(year,
+                     data_recorded = data_recorded_2,
                      date_time) |>
-              mutate(year = year(date_time),
-                     date = floor_date(date_time, unit = "days"),
+              mutate(date = floor_date(date_time, unit = "days"),
                      hour = hm(paste(hour(date_time),
                                      minute(date_time))),
                      data_reviewed = "First 30",
@@ -337,6 +354,31 @@ sonar_raw |>
                    list(min = ~ min(.),
                         max = ~ max(.))))
 
+# expand days when one row describes 24 hours
+expand_na_hr <-
+  sonar_raw |>
+  filter(is.na(hour)) |>
+  select(year,
+         date,
+         data_recorded,
+         data_reviewed,
+         comments) |>
+  distinct() |>
+  crossing(
+    crossing(hr = hours(seq(0, 23, by = 1)),
+             min = minutes(c(0, 30))) |>
+      mutate(hour = hr + min) |>
+      select(hour)) |>
+  mutate(date_time = date + hour) |>
+  select(any_of(names(sonar_raw)))
+
+sonar_raw <-
+  sonar_raw |>
+  filter(!is.na(hour)) |>
+  bind_rows(expand_na_hr) |>
+  arrange(date_time)
+
+
 #--------------------------------------------------
 # which hours do we want to group together?
 #--------------------------------------------------
@@ -347,9 +389,11 @@ hrs_fct_grp <- rep(1:4, each = 6) |>
 # link to SONAR data to determine if SONAR was operational or data was reviewed
 sonar_review <-
   sonar_raw %>%
-  mutate(data_reviewed = if_else(data_recorded %in% c("None", "Partial", "Poor Image"),
-                                 "Not reviewed",
-                                 data_reviewed)) %>%
+  mutate(across(
+    data_reviewed,
+    ~ case_when(data_recorded %in% c("None", "Partial", "Poor Image") ~ "Not reviewed",
+                .default = .)
+  )) |>
   mutate(date_time = date + hour) |>
   select(year,
          # date,
@@ -374,8 +418,10 @@ sum(duplicated(sonar_review$date_time))
 # tz(sonar_review$date_time) = "America/Los_Angeles"
 
 # set up tibble containing all half hour periods that sonar was operating
-half_hr_periods <- tibble(year = sort(unique(sonar_raw$year))) |>
-  mutate(min = ymd(paste(year, "0201"), tz = tz(sonar_review$date_time)),
+half_hr_periods <-
+  expand(sonar_raw,
+         year) |>
+  mutate(min = ymd(paste(year, "0101"), tz = tz(sonar_review$date_time)),
          max = ymd(paste(year, "0731"), tz = tz(sonar_review$date_time))) |>
   mutate(across(c(min,
                   max),
@@ -606,8 +652,7 @@ sonar_fish <-
   # made the decision to drop 2018 data for a variety of reasons
   # filter(year != 2018) |>
   # decide to filter all observations after June 15
-  filter(month(date) < 6 |
-           (month(date) == 6 & day(date) <= 15)) %>%
+  filter(date <= ymd(paste(year, "0615"))) |>
   filter(data_recorded != "Partial",
          confidence == 1) %>%
   filter(!is.na(frame)) %>%
@@ -619,314 +664,200 @@ sonar_fish <-
 #--------------------------------------------------
 # species composition data
 #--------------------------------------------------
-# spp_comp_2021 <- read_excel(here("analysis/data/raw_data",
-#                                  "Species Comp ALL.xlsx"),
-#                             "2021 lengths") %>%
-#   clean_names() %>%
-#   mutate(spp = recode(species,
-#                       "Resident rainbow" = "Resident RB")) %>%
-#   rename(date = survey_date,
-#          rml = rm_lower,
-#          rmu = rm_upper,
-#          age = scale_age,
-#          mark_status = mark,
-#          gear = survey_type,
-#          fork_length_cm = fork_length,
-#          poh_length_cm = poh) |>
-#   mutate(fork_length_mm = fork_length_cm * 10,
-#          poh_length_mm = poh_length_cm * 10)
-#
-# spp_comp_2022 <- read_excel(here("analysis/data/raw_data",
-#                                  "Dungeness_sppcomp_data_2022_FINAL.xlsx"),
-#                             "BullTrout",
-#                             skip = 2) %>%
-#   mutate(across(
-#     contains("(mm)"),
-#     as.numeric
-#   )) |>
-#   bind_rows(read_excel(here("analysis/data/raw_data",
-#                             "Dungeness_sppcomp_data_2022_FINAL.xlsx"),
-#                        "Steelhead",
-#                        skip = 2) |>
-#               mutate(across(
-#                 contains("(mm)"),
-#                 as.numeric
-#               ))) %>%
-#   bind_rows(read_excel(here("analysis/data/raw_data",
-#                             "Dungeness_sppcomp_data_2022_FINAL.xlsx"),
-#                        "Other",
-#                        skip = 2) |>
-#               mutate(across(
-#                 contains("(mm)"),
-#                 as.numeric
-#               ))) %>%
-#   clean_names() |>
-#   rename(comments = condition_comments) |>
-#   mutate(fork_length_cm = fork_length_mm / 10,
-#          poh_length_cm = poh_length_mm / 10)
-#
-# spp_comp_old <- spp_comp_2021 |>
-#   bind_rows(spp_comp_2022 |>
-#               filter(!is.na(as.numeric(count)))) |>
-#   select(all_of(intersect(names(spp_comp_2022), names(spp_comp_2021)))) |>
-#   mutate(year = year(date)) |>
-#   relocate(year, .before = 1) |>
-#   relocate(fork_length_cm,
-#            .after = "fork_length_mm") |>
-#   relocate(poh_length_cm,
-#            .after = "poh_length_mm") |>
-#   mutate(across(gear,
-#                 ~ fct_relabel(.,
-#                               ~ if_else(str_detect(., "Hook"),
-#                                         "hook and line",
-#                                         .))),
-#          across(gear,
-#                 ~ fct_relabel(.,
-#                               ~ str_to_lower(.))),
-#          across(species,
-#                 ~ recode(.,
-#                          "RAINBOW" = "Resident rainbow",
-#                          "Bull Trout" = "Bull trout")),
-#          across(mark_status,
-#                 ~ recode(.,
-#                          "AD" = "Marked",
-#                          "UM" = "Unmarked")),
-#          across(mark_status,
-#                 ~ if_else(species == "Bull trout" & is.na(.),
-#                           "Unmarked",
-#                           .)))
+# using new file from Bethany Craig with 2021 - 2024 data
+spp_comp_file <- "Dungeness_sppcomp_data_2024_BC.xlsx"
 
-# using new file from Kathryn Sutton
-# spp_comp_file <- "Dungeness_sppcomp_data_2023_FINAL.xlsx"
-# spp_comp_file <- "Dungeness_sppcomp_data_2023_FINAL_KSupdate03012024.xlsx"
-spp_comp_file <- "Dungeness_sppcomp_data_2023_FINAL_BC_KS05082024.xlsx"
+excel_sheets(here("analysis",
+                  "data",
+                  "raw_data",
+                  spp_comp_file))
 
 spp_comp <-
-  read_excel(here("analysis/data/raw_data",
-                  spp_comp_file),
-             "2023",
-             skip = 2) %>%
-  mutate(
-    across(
-      contains("(mm)"),
-      ~ as.numeric(str_remove(., "~"))),
-    across(
-      Count,
-      as.character
-    )) |>
-  rlang::set_names( ~ str_remove(., " \\(mm\\)$")) |>
-  bind_rows(read_excel(here("analysis/data/raw_data",
-                            spp_comp_file),
-                       "2022",
-                       skip = 2) |>
-              mutate(across(
-                contains("(mm)"),
-                ~ as.numeric(str_remove(., "~"))
-              )) |>
-              rename("Floy Tag #" = "Tag #",
-                     "Floy Tag Color" = "Tag Color") |>
-              rlang::set_names( ~ str_remove(., " \\(mm\\)$"))) %>%
-  bind_rows(read_excel(here("analysis/data/raw_data",
-                            spp_comp_file),
-                       "2021",
-                       skip = 2) |>
-              mutate(across(
-                c(contains("(mm)"),
-                  contains("Length"),
-                  contains("Height"),
-                  contains("Girth")),
-                ~ as.numeric(str_remove(., "~"))
-              )) |>
-              rename("Floy Tag #" = "Tag #",
-                     "Floy Tag Color" = "Tag Color") |>
-              rlang::set_names( ~ str_remove(., " \\(mm\\)$"))) %>%
-  clean_names() |>
-  rename(comments = condition_comments,
-         fork_length_mm = fork_length,
-         poh_length_mm = poh_length) |>
+  tibble(year = excel_sheets(here("analysis",
+                                  "data",
+                                  "raw_data",
+                                  spp_comp_file))) |>
+  mutate(across(year,
+                as.integer)) |>
+  mutate(spp_comp_data = map(year,
+                             .f = function(x) {
+                               yr_data <-
+                                 read_excel(here("analysis",
+                                                 "data",
+                                                 "raw_data",
+                                                 spp_comp_file),
+                                            sheet = as.character(x),
+                                            skip = 2) |>
+                                 clean_names() |>
+                                 rlang::set_names(nm =
+                                                    function(nm) {
+                                                      str_replace(nm,
+                                                                  "^tag_",
+                                                                  "floy_tag_") |>
+                                                        str_replace("girth$",
+                                                                    "girth_mm") |>
+                                                        str_replace("dorsal_height$",
+                                                                    "dorsal_height_mm") |>
+                                                        str_replace("_length$",
+                                                                    "_length_mm") |>
+                                                        str_replace("acoutic",
+                                                                    "acoustic")
+                                                    }) |>
+                                 mutate(across(floy_tag_number,
+                                               as.character),
+                                        across(flow_cfs,
+                                               ~ str_remove(., "^~")),
+                                        across(c(flow_cfs,
+                                                 count,
+                                                 ends_with("_mm")),
+                                               as.numeric)) |>
+                                 filter(!is.na(date))
+
+                               return(yr_data)
+                             })) |>
+  unnest(spp_comp_data) |>
+  select(-x27) |>
+  rename(comments = condition_comments) |>
   mutate(fork_length_cm = fork_length_mm / 10,
          poh_length_cm = poh_length_mm / 10) |>
-  mutate(year = year(date)) |>
-  relocate(year, .before = 1) |>
   relocate(fork_length_cm,
            .after = "fork_length_mm") |>
   relocate(poh_length_cm,
            .after = "poh_length_mm") |>
-  mutate(across(gear,
-                str_to_lower),
-         # across(gear,
-         #        ~ recode(.,
-         #                 "gn" = "gill net")),
-         across(site,
-                str_to_title),
-         across(site,
-                ~ str_replace_all(., "Usgs", "USGS")),
-         across(site,
-                ~ str_replace_all(., "Ds", "DS")),
-         across(site,
-                ~ str_replace_all(., "Us", "US")),
-
-         across(site,
-                ~ str_replace_all(., "Bt", "BT")),
-         across(site,
-                ~ str_replace_all(., "Rb", "RB")),
-         across(site,
-                ~ str_replace_all(., "Sh", "SH")),
-         across(site,
-                ~ str_replace_all(., "Gage", "Gauge")),
-         across(site,
-                ~ str_remove(., "\\.$"))) |>
-  mutate(across(c(species,
+  mutate(across(species,
+                ~ fct_recode(.,
+                             "Bull Trout" = "BT",
+                             "Cutthroat" = "CT",
+                             "Rainbow" = "RB",
+                             "Steelhead" = "SH",
+                             "Chinook" = "CH")),
+         across(c(species,
                   floy_tag_color),
                 str_to_title),
-         across(species,
-                ~ case_when(count == "NO CATCH" ~ "No Catch",
-                            .default = .)),
-         across(count,
-                ~ case_when(str_detect(., "-") ~ str_split(., "-", simplify = T)[,1],
-                            .default = .)),
-         across(count,
-                as.numeric)) |>
-  # mutate(across(floy_tag_number,
-  #               ~ case_match(.,
-  #                            "89/90" ~ "0089/0090",
-  #                            "90/89" ~ "0089/0090",
-  #                            "-" ~ NA_character_,
-  #                            .default = .)),
-  #        across(recapture,
-  #               ~ case_match(.,
-  #                            "Yes" ~ "Y",
-  #                            "-" ~ NA_character_,
-  #                            .default = .))) |>
-mutate(across(starts_with("recapture"),
-              ~ case_when(. == "Y" ~ TRUE,
-                          . == "N" ~ FALSE,
-                          .default = NA))) |>
+         across(floy_tag_color,
+                ~ fct_recode(.,
+                             NULL = "No Tag")),
+         across(gear,
+                str_to_lower),
+         across(gear,
+                ~ fct_recode(.,
+                             "hook and line" = "h&l",
+                             "hook and line" = "hl",
+                             "tangle net" = "tn")),
+         across(site,
+                str_to_title),
+         across(site,
+                ~ str_replace(.,
+                              "Usgs", "USGS") |>
+                  str_replace("Us", "US") |>
+                  str_replace("Ds", "DS") |>
+                  str_replace("Gage", "Gauge") |>
+                  str_replace("School House", "Schoolhouse"))) |>
+  mutate(across(starts_with("recapture"),
+                ~ case_when(. == "Y" ~ TRUE,
+                            . == "N" ~ FALSE,
+                            .default = NA))) |>
   arrange(date,
           species,
           count)
 
-# any fish described as a recapture in the comments?
-spp_comp |>
-  filter(str_detect(comments, regex("recap", ignore_case = T)) |
-           recapture_prev_year |
-           recapture_this_year |
-           (floy_tag_number %in% floy_tag_number[duplicated(floy_tag_number)] &
-              !is.na(floy_tag_number))) |>
-  select(date, species,
-         count,
-         site,
-         contains("recapture"),
-         contains("floy_tag"),
-         # scale_card_number,
-         fork_length_cm,
-         comments) |>
-  as.data.frame()
-
-# fish without a length?
-miss_length <-
+# add some missing lengths to fish that have been recaptured without length data
+# known lengths
+known_length <-
   spp_comp |>
-  filter(species != "No Catch",
-         is.na(fork_length_cm),
-         recapture_this_year)
-
-miss_length |>
-  as.data.frame()
-# all missing lengths are recaps, according to comments, and most are bull trout
-
-# get all known bull trout lengths
-known_bt_lngth <-
-  spp_comp |>
-  filter(species == "Bull Trout",
-         !is.na(fork_length_cm)) |>
-  select(known_date = date,
+  filter(!is.na(fork_length_cm),
+         (!is.na(floy_tag_number) |
+            !is.na(acoustic_tag_number) |
+            !is.na(tissue_number_bar_code_number))) |>
+  select(year,
+         known_date = date,
          species,
          floy_tag_number,
-         old_fl = fork_length_cm) |>
-  distinct()
+         acoustic_tag_number,
+         tissue_number_bar_code_number,
+         old_fl_cm = fork_length_cm,
+         old_fl_mm = fork_length_mm)
 
-
-# fill in missing lengths for bull trout
-miss_length_bt <-
-  miss_length |>
-  filter(species == "Bull Trout") |>
-  left_join(known_bt_lngth,
-            by = join_by(species,
+spp_comp |>
+  filter(is.na(fork_length_cm),
+         !is.na(species),
+         species != "No Catch") |>
+  left_join(known_length |>
+              select(-c(acoustic_tag_number,
+                        tissue_number_bar_code_number)) |>
+              filter(!is.na(floy_tag_number)),
+            by = join_by(year,
+                         species,
                          floy_tag_number,
                          closest(date >= known_date))) |>
-  mutate(across(fork_length_cm,
-                ~ case_when(is.na(.) ~ old_fl,
-                            .default = .))) |>
-  select(all_of(names(spp_comp)))
-
-# one steelhead recap with missing length
-miss_length |>
-  filter(species == "Steelhead") |>
-  as.data.frame()
-
-# look at the initial record for that fish
-spp_comp |>
-  filter(date == ymd(20220309),
-         species == "Steelhead") |>
-  as.data.frame()
-
-# fill in missing lengths for steelhead
-miss_length_sh <-
-  miss_length |>
-  filter(species == "Steelhead") |>
-  left_join(spp_comp |>
-              filter(tissue_number_bar_code_number == "22BJ0008") |>
-              select(known_date = date,
-                     species,
-                     old_fl = fork_length_cm) |>
-              distinct(),
-            by = join_by(species,
-                         closest(date >= known_date))) |>
-  mutate(across(fork_length_cm,
-                ~ case_when(is.na(.) ~ old_fl,
-                            .default = .))) |>
-  select(all_of(names(spp_comp)))
-
+  select(year:species,
+         known_date,
+         acoustic_tag_number,
+         floy_tag_number,
+         fork_length_cm,
+         contains("old_fl")) |>
+  mutate(date_diff = difftime(date, known_date, units = "days")) |>
+  arrange(desc(date_diff))
 
 
 spp_comp <-
   spp_comp |>
-  anti_join(miss_length) |>
-  bind_rows(miss_length_bt,
-            miss_length_sh) |>
-  arrange(date,
-          species,
-          count)
+  left_join(known_length |>
+              select(-c(tissue_number_bar_code_number,
+                        acoustic_tag_number)) |>
+              filter(!is.na(floy_tag_number)),
+            by = join_by(year,
+                         species,
+                         floy_tag_number,
+                         closest(date >= known_date))) |>
+  mutate(across(fork_length_cm,
+                ~ case_when(is.na(.) & !is.na(old_fl_cm) ~ old_fl_cm,
+                            .default = .)),
+         across(fork_length_mm,
+                ~ case_when(is.na(.) & !is.na(old_fl_mm) ~ old_fl_mm,
+                            .default = .))) |>
+  select(all_of(names(spp_comp))) |>
+  left_join(known_length |>
+              select(-c(floy_tag_number,
+                        tissue_number_bar_code_number)) |>
+              filter(!is.na(acoustic_tag_number)),
+            by = join_by(year,
+                         species,
+                         acoustic_tag_number,
+                         closest(date >= known_date))) |>
+  mutate(across(fork_length_cm,
+                ~ case_when(is.na(.) & !is.na(old_fl_cm) ~ old_fl_cm,
+                            .default = .)),
+         across(fork_length_mm,
+                ~ case_when(is.na(.) & !is.na(old_fl_mm) ~ old_fl_mm,
+                            .default = .))) |>
+  select(all_of(names(spp_comp))) |>
+  mutate(across(fork_length_cm,
+                ~ case_when(is.na(.) &
+                              tissue_number_bar_code_number == "recapture" &
+                              str_detect(comments, "22BJ0008") ~ known_length$old_fl_cm[known_length$tissue_number_bar_code_number == "22BJ0008" & !is.na(known_length$tissue_number_bar_code_number)],
+                            .default = .)),
+         across(fork_length_mm,
+                ~ case_when(is.na(.) &
+                              tissue_number_bar_code_number == "recapture" &
+                              str_detect(comments, "22BJ0008") ~ known_length$old_fl_mm[known_length$tissue_number_bar_code_number == "22BJ0008" & !is.na(known_length$tissue_number_bar_code_number)],
+                            .default = .)))
 
+# what fish are left with missing lengths?
+spp_comp |>
+  filter(is.na(fork_length_cm),
+         species != "No Catch") |>
+  as.data.frame()
+# only fish left wasn't actually captured (see comments)
 
-# spp_comp |>
-#   filter(rmu < 6,
-#          month(date) <= 6) |>
-#   mutate(across(species,
-#                 str_to_sentence)) |>
-#   count(year, date, species,
-#         name = "new") |>
-#   filter(year %in% unique(spp_comp_old$year)) |>
-#   full_join(spp_comp_old |>
-#               filter((rmu < 6 | is.na(rmu)),
-#                      month(date) <= 6) |>
-#               count(year, date, species,
-#                     name = "old")) |>
-#   mutate(diff = new - old) |>
-#   arrange(date,
-#           species) |>
-#   # filter(is.na(old))
-#   # filter(is.na(new))
-#   filter(diff != 0)
-
-
-spp_fl <- spp_comp |>
-# spp_fl <- spp_comp_old |>
+spp_fl <-
+  spp_comp |>
   filter(rmu < 6,
          (month(date) <= 6 |
             month(date) == 6 & mday(date) <= 15),
          (is.na(site) | str_detect(site, "Gray Wolf", negate = TRUE))) |>
-  select(date,
+  select(year,
+         date,
          species,
          gear,
          mark_status,
@@ -943,7 +874,6 @@ spp_fl <- spp_comp |>
          fl_z = (fork_length_cm - fl_mean) / fl_sd)
 
 spp_fl |>
-  mutate(year = year(date)) |>
   tabyl(species,
         year) |>
   adorn_totals("both")

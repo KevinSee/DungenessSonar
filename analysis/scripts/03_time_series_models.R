@@ -1,7 +1,7 @@
 # Author: Kevin See
 # Purpose: Fit time-series models
 # Created: 4/24/23
-# Last Modified: 3/15/24
+# Last Modified: 2/14/25
 # Notes:
 
 #-----------------------------------------------------------------
@@ -55,19 +55,25 @@ sthd_cnts <-
          dt = date + time) |>
   filter(!is.na(direction),
          direction %in% c("downstream",
-                          "upstream")) |>
-  mutate(half_hr_int = NA_real_)
+                          "upstream"))# |>
+  # mutate(half_hr_int = NA_real_)
 
 # tz(sthd_cnts$dt) = "America/Los_Angeles"
 
 # which interval is each observation in?
 sthd_cnts <-
   sthd_cnts |>
-  mutate(half_hr_int = map_int(dt,
-                               .f = function(x) {
-                                 min(which(x %within% half_hr_periods$half_hr_interval))
-                               },
-                               .progress = T))
+  left_join(half_hr_periods |>
+              mutate(half_hr_int_min = int_start(half_hr_interval),
+                     half_hr_int_max = int_end(half_hr_interval)) |>
+              select(half_hr_int,
+                     half_hr_int_min,
+                     half_hr_int_max),
+            by = join_by(between(dt,
+                                 half_hr_int_min,
+                                 half_hr_int_max))) |>
+  select(-c(half_hr_int_min,
+            half_hr_int_max))
 
 
 ts_half_hr <- half_hr_periods |>
@@ -91,7 +97,8 @@ ts_half_hr |>
   group_by(year,
            direction) |>
   summarize(across(n_fish,
-                   ~ sum(., na.rm = T))) |>
+                   ~ sum(., na.rm = T)),
+            .groups = "drop") |>
   pivot_wider(names_from = direction,
               values_from = n_fish) |>
   mutate(net = up - down)
@@ -100,6 +107,9 @@ ts_half_hr |>
   filter(!is.na(n_fish),
          !reviewed) |>
   as.data.frame()
+
+
+
 
 #-----------------------------------------------------------------
 # fit some time series models

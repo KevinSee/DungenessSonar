@@ -131,6 +131,9 @@ redd_est <- read_excel(here("analysis/supplementary-materials/redd_data",
   # got this number from file "Dungeness Steelhead 2023.xlsx" from Bethany
   bind_rows(tibble(year = 2023,
                    redd_est = 309)) |>
+  # got this number from file "Dungeness Steelhead 2024.xlsx" from Bethany
+  bind_rows(tibble(year = 2024,
+                   redd_est = 402)) |>
   # filter(year >= 2019) |>
   mutate(across(year,
                 ~ as.factor(as.character(.))))

@@ -18,25 +18,27 @@ theme_set(theme_bw())
 
 #-----------------------------------------------------------------
 # read in data
-mult_obs_df <- read_excel(here("analysis/data/raw_data",
+mult_obs_df <-
+  bind_rows(
+  read_excel(here("analysis/data/raw_data",
                                "2019 shared sonar days.xlsx")) |>
-  clean_names() |>
-  bind_rows(read_excel(here("analysis/data/raw_data",
+  clean_names(),
+  read_excel(here("analysis/data/raw_data",
                             "2020 shared sonar days.xlsx")) |>
               clean_names() |>
               rename(comments = comments_notes,
-                     direction = downstreamirection)) |>
-  bind_rows(read_excel(here("analysis/data/raw_data",
+                     direction = downstreamirection),
+  read_excel(here("analysis/data/raw_data",
                             "2021 shared sonar days.xlsx")) |>
               clean_names() |>
               rename(comments = comments_notes) |>
               mutate(across(hour,
-                            ~ date + hours(. / 100)))) |>
-  bind_rows(read_excel(here("analysis/data/raw_data",
+                            ~ date + hours(. / 100))),
+  read_excel(here("analysis/data/raw_data",
                             "2022 shared sonar days.xlsx"),
                        skip = 4) |>
-              clean_names()) |>
-  bind_rows(read_csv(here("analysis/data/raw_data",
+              clean_names(),
+  read_csv(here("analysis/data/raw_data",
                             "2023 shared sonar days.csv"),
                      show_col_types = F) |>
               clean_names() |>
@@ -44,7 +46,17 @@ mult_obs_df <- read_excel(here("analysis/data/raw_data",
                      across(hour,
                             ~ hms(as.character(.))),
                      across(hour,
-                            ~ date + .))) |>
+                            ~ date + .)),
+  read_csv(here("analysis/data/raw_data",
+                "2024 shared.csv"),
+           show_col_types = F) |>
+    clean_names() |>
+    mutate(across(date, mdy),
+           across(hour,
+                  ~ hms(as.character(.))),
+           across(hour,
+                  ~ date + .))
+  ) |>
   mutate(date_time = ymd_hm(paste(year(date),
                                   month(date),
                                   day(date),
@@ -64,7 +76,8 @@ mult_obs_df <- read_excel(here("analysis/data/raw_data",
          confidence == 1)
 
 # assign a fish ID to each fish we think was being observed by multiple observers
-mult_obs_fish <- mult_obs_df |>
+mult_obs_fish <-
+  mult_obs_df |>
   select(year:frame) |>
   arrange(date_time,
           frame,
@@ -141,7 +154,8 @@ mult_obs_fish |>
 
 
 # summarize counts by date, and compare other observers to AS
-as_comp_df <- mult_obs_df |>
+as_comp_df <-
+  mult_obs_df |>
   group_by(year,
            date,
            # date_time,

@@ -1,7 +1,7 @@
 # Author: Kevin See
 # Purpose: Fit GAM to time-series with missing data
 # Created: 4/21/23
-# Last Modified: 5/14/24
+# Last Modified: 2/14/25
 # Notes:
 
 #-----------------------------------------------------------------
@@ -27,7 +27,8 @@ load(here("analysis/data/derived_data",
 
 
 # drop 2018
-ts_half_hr |>
+ts_half_hr <-
+  ts_half_hr |>
   filter(year != 2018)
 
 # # quick plot of data
@@ -42,6 +43,7 @@ ts_half_hr |>
 #   facet_wrap(~ direction + year,
 #              nrow = 2,
 #              scales = "free_x")
+
 
 #------------------------------------------------
 # time series of observed fish by the hour
@@ -99,11 +101,12 @@ obs_day |>
 #-----------------------------------------------------------------
 # prep data for GAM
 # query discharge data for Dungeness River
-disc_day_df <- dataRetrieval::readNWISdv("12048000",
-                                         parameterCd = "00060", # discharge
-                                         startDate = as.character(min(ts_half_hr$date_time)),
-                                         endDate = as.character(ceiling_date(max(ts_half_hr$date_time), unit = "days")),
-                                         statCd = "00003") |>
+disc_day_df <-
+  dataRetrieval::readNWISdv("12048000",
+                            parameterCd = "00060", # discharge
+                            startDate = as.character(min(ts_half_hr$date_time)),
+                            endDate = as.character(ceiling_date(max(ts_half_hr$date_time), unit = "days")),
+                            statCd = "00003") |>
   as_tibble() |>
   dataRetrieval::renameNWISColumns() |>
   rename(mean_discharge = Flow,
@@ -115,12 +118,13 @@ disc_day_df <- dataRetrieval::readNWISdv("12048000",
   select(-Flow_cd)
 
 # at a finer temporal scale
-disc_all_df <- dataRetrieval::readNWISuv(siteNumbers = "12048000",
-                                         parameterCd = "00060", # discharge
-                                         startDate = as.character(min(ts_half_hr$date_time)),
-                                         # endDate = ymd(20190701),
-                                         endDate = as.character(ceiling_date(max(ts_half_hr$date_time), unit = "days")),
-                                         tz = "UTC") |>
+disc_all_df <-
+  dataRetrieval::readNWISuv(siteNumbers = "12048000",
+                            parameterCd = "00060", # discharge
+                            startDate = as.character(min(ts_half_hr$date_time)),
+                            # endDate = ymd(20190701),
+                            endDate = as.character(ceiling_date(max(ts_half_hr$date_time), unit = "days")),
+                            tz = "UTC") |>
   as_tibble() |>
   dataRetrieval::renameNWISColumns() |>
   rename(mean_discharge = Flow_Inst,
@@ -168,8 +172,6 @@ disc_day_df |>
 up_data <-
   ts_half_hr |>
   filter(direction == "up") |>
-  # drop 2018
-  filter(year != 2018) |>
   mutate(day_of_year = yday(date),
          across(day_of_year,
                 as.integer),
@@ -228,10 +230,10 @@ down_data %<>%
   select(-daily_discharge)
 
 
-#--------------------------
-# summarized at whole hour
-# upstream observations
-
+# #--------------------------
+# # summarized at whole hour
+# # upstream observations
+#
 # up_data <-
 #   ts_half_hr |>
 #   filter(direction == "up") |>
@@ -327,9 +329,10 @@ plot(down_mod)
 
 
 # save a bunch of objects
-time_step <- if_else(sum(str_detect(up_data$date_time[12], ":30:")) > 0,
-                     "30 min",
-                     "1 hour")
+time_step <-
+  if_else(sum(str_detect(up_data$date_time[12], ":30:")) > 0,
+          "30 min",
+          "1 hour")
 
 save(ts_half_hr,
      up_data,
@@ -346,23 +349,26 @@ save(ts_half_hr,
 # plot some of the effects
 text_size = 16
 
-up_hr_p <- plot_smooths(up_mod,
-                        series = hour_of_day,
-                        conditions = quos(prop_hr_sampled == 1),
-                        transform = exp) +
+up_hr_p <-
+  plot_smooths(up_mod,
+               series = hour_of_day,
+               conditions = quos(prop_hr_sampled == 1),
+               transform = exp) +
   labs(x = "Hour of Day",
        y = "Expected Number Upstream\nFish / 30 min") +
   theme(plot.background = element_rect(fill='transparent', color=NA),
         legend.box.background = element_rect(fill='transparent'),
         text = element_text(size = text_size))
 
-up_disch_p <- plot_smooths(up_mod,
-                           series = mean_discharge,
-                           # comparison = year,
-                           conditions = quos(prop_hr_sampled == 1),
-                           transform = exp) +
-  scale_y_continuous(limits = c(NA, 0.4)) +
-  scale_x_continuous(limits = c(NA, max(up_data$mean_discharge, na.rm = T))) +
+up_disch_p <-
+  plot_smooths(up_mod,
+               series = mean_discharge,
+               # comparison = year,
+               conditions = quos(prop_hr_sampled == 1),
+               transform = exp) +
+  scale_y_continuous(limits = c(NA, 0.45)) +
+  # scale_x_continuous(limits = c(NA, max(up_data$mean_discharge, na.rm = T))) +
+  scale_x_continuous(limits = c(NA, quantile(up_data$mean_discharge, 0.995, na.rm = T))) +
   geom_rug(data = up_data,
            aes(x = mean_discharge)) +
   labs(x = "Discharge",
@@ -371,12 +377,13 @@ up_disch_p <- plot_smooths(up_mod,
         legend.box.background = element_rect(fill='transparent'),
         text = element_text(size = text_size))
 
-up_doy_p <- get_gam_predictions(up_mod,
-                                series = day_of_year,
-                                series_length = 151,
-                                conditions = quos(prop_hr_sampled == 1),
-                                exclude_random = F,
-                                exclude_terms = s(mean_discharge)) |>
+up_doy_p <-
+  get_gam_predictions(up_mod,
+                      series = day_of_year,
+                      series_length = 151,
+                      conditions = quos(prop_hr_sampled == 1),
+                      exclude_random = F,
+                      exclude_terms = s(mean_discharge)) |>
   as_tibble() |>
   mutate(across(day_of_year,
                 as.integer),
@@ -425,11 +432,12 @@ ggsave(here("analysis/figures",
 
 
 
-down_hr_p <- plot_smooths(down_mod,
-                          series = hour_of_day,
-                          conditions = quos(prop_hr_sampled == 1),
-                          transform = exp) +
-  scale_y_continuous(limits = c(0, 0.5)) +
+down_hr_p <-
+  plot_smooths(down_mod,
+               series = hour_of_day,
+               conditions = quos(prop_hr_sampled == 1),
+               transform = exp) +
+  # scale_y_continuous(limits = c(0, 0.65)) +
   labs(x = "Hour of Day",
        y = "Expected Number Downstream\nFish / 30 min") +
   theme(plot.background = element_rect(fill='transparent', color=NA),
@@ -437,13 +445,16 @@ down_hr_p <- plot_smooths(down_mod,
         text = element_text(size = text_size))
 
 
-down_disch_p <- plot_smooths(down_mod,
-                             series = mean_discharge,
-                             # comparison = year,
-                             conditions = quos(prop_hr_sampled == 1),
-                             transform = exp) +
-  scale_y_continuous(limits = c(NA, 0.4)) +
-  scale_x_continuous(limits = c(NA, max(down_data$mean_discharge, na.rm = T))) +
+down_disch_p <-
+  plot_smooths(down_mod,
+               series = mean_discharge,
+               # comparison = year,
+               conditions = quos(prop_hr_sampled == 1),
+               transform = exp) +
+  scale_y_continuous(limits = c(NA, 0.45)) +
+  # scale_x_continuous(limits = c(NA, max(down_data$mean_discharge, na.rm = T))) +
+  scale_x_continuous(limits = c(NA, quantile(down_data$mean_discharge, 0.995, na.rm = T))) +
+
   labs(x = "Discharge",
        y = "Expected Number Downstream\nFish / 30 min") +
   theme(plot.background = element_rect(fill='transparent', color=NA),
@@ -501,8 +512,8 @@ down_doy_p <- get_gam_predictions(down_mod,
               color = NA,
               alpha = 0.2) +
   geom_line() +
-  scale_y_continuous(limits = c(NA, 35)) +
-  # scale_y_continuous(limits = c(NA, 66)) +
+  # scale_y_continuous(limits = c(NA, 35)) +
+  scale_y_continuous(limits = c(NA, 70)) +
   labs(x = "Date",
        y = "Expected Number Downstream\nFish / Day",
        color = "Year",
@@ -537,11 +548,13 @@ rm(down_disch_p,
 # prediction
 #----------------------------------------------
 
-newdata <- tibble(year = unique(up_data$year)) |>
+newdata <-
+  expand(up_data,
+         year) |>
   mutate(date_time =
            map(year,
                .f = function(yr) {
-                 tibble(date_time = seq(ymd_hms(paste0(yr, "0201 00:00:00"), tz = tz(up_data$date_time)),
+                 tibble(date_time = seq(ymd_hms(paste0(yr, "0101 00:00:00"), tz = tz(up_data$date_time)),
                                         ymd_hms(paste0(yr, "0615 00:00:00"), tz = tz(up_data$date_time)),
                                         by = time_step))
                })) |>
@@ -630,7 +643,7 @@ Cv <- chol(V) # Cholesky factorization of V
 set.seed(123) # for reproducibility
 nus <- rnorm(num_beta_vecs * length(beta)) # standard normal random variables
 beta_sims <- beta + t(Cv) %*% matrix(nus, nrow = length(beta), ncol = num_beta_vecs) # simulated coefficient vectors
-X <- model.matrix(up_mod, newdata) # design matrix for new data
+X <- model.matrix(down_mod, newdata) # design matrix for new data
 z_sims <- X %*% beta_sims # linear predictor matrix
 y_sims_down <- down_mod$family$linkinv(z_sims) # predicted response matrix
 
@@ -667,7 +680,8 @@ all_draws <-
 # delete some draws that may be absurd
 # threshold for predictions of up/down movement in a 30 min period (or 1 hr period)
 my_thres = case_when(time_step == "30 min" ~ 10,
-                     time_step == "1 hour" ~ 20)
+                     time_step == "1 hour" ~ 20,
+                     .default = Inf)
 
 all_draws <-
   all_draws |>
@@ -723,9 +737,8 @@ if(time_step == "30 min") {
   mutate(
     across(
       value,
-      ~ if_else(!is.na(obs_fish) & prop_hr_sampled == 1,
-                obs_fish,
-                .)
+      ~ case_when(!is.na(obs_fish) & prop_hr_sampled == 1 ~ obs_fish,
+                .default = .)
     )
   )
 } else if(time_step == "1 hour") {
@@ -734,7 +747,8 @@ if(time_step == "30 min") {
     left_join(up_data |>
                 filter(reviewed > 0) |>
                 mutate(obs_fish = case_when(reviewed == 2 ~ n_fish,
-                                            reviewed == 1 ~ n_fish / prop_hr_sampled),
+                                            reviewed == 1 ~ n_fish / prop_hr_sampled,
+                                            .default = NA_real_),
                        direction = "up") |>
                 select(date_time,
                        direction,
@@ -743,7 +757,8 @@ if(time_step == "30 min") {
                 bind_rows(down_data |>
                             filter(reviewed > 0) |>
                             mutate(obs_fish = case_when(reviewed == 2 ~ n_fish,
-                                                        reviewed == 1 ~ n_fish / prop_hr_sampled),
+                                                        reviewed == 1 ~ n_fish / prop_hr_sampled,
+                                                        .default = NA_real_),
                                    direction = "down") |>
                             select(date_time,
                                    direction,
@@ -790,31 +805,6 @@ gc()
 
 #-----------------------------------------------------------------------
 # sum MCMC draws at certain time scales
-if(time_step == "1 hour") {
-  hr_draws <- all_draws |>
-    select(date_hr,
-           direction,
-           draw,
-           value)
-} else {
-hr_draws <- all_draws |>
-  # mutate(across(value,
-  #               round_half_up)) |>
-  group_by(date_hr, direction, draw) |>
-  summarize(across(value,
-                   sum),
-            .groups = "drop")
-}
-
-# save the MCMC draws as separate objects
-write_rds(hr_draws,
-          file = here("analysis/data/derived_data",
-                      paste0("mcmc_draws_hour_",
-                             str_replace(time_step, " ", "_"),
-                             ".rds")))
-rm(hr_draws)
-gc()
-
 # day scale
 day_draws <- all_draws |>
   # mutate(across(value,
@@ -833,25 +823,54 @@ write_rds(day_draws,
 rm(day_draws)
 gc()
 
-# year scale
-yr_draws <- all_draws |>
-  filter(month(date) < 6 |
-           (month(date) == 6 & mday(date) <= 15)) |>
+# # year scale
+# yr_draws <- all_draws |>
+#   filter(month(date) < 6 |
+#            (month(date) == 6 & mday(date) <= 15)) |>
+#   # mutate(across(value,
+#   #               round_half_up)) |>
+#   group_by(year, direction, draw) |>
+#   summarize(across(value,
+#                    sum),
+#             .groups = "drop")
+#
+# # save the MCMC draws as separate objects
+# write_rds(yr_draws,
+#           file = here("analysis/data/derived_data",
+#                       paste0("mcmc_draws_year_",
+#                              str_replace(time_step, " ", "_"),
+#                              ".rds")))
+# rm(yr_draws)
+# gc()
+
+# hour scale
+if(time_step == "1 hour") {
+  hr_draws <-
+    all_draws |>
+    select(date_hr,
+           direction,
+           draw,
+           value)
+} else if(time_step == "30 min") {
+hr_draws <-
+  all_draws |>
   # mutate(across(value,
   #               round_half_up)) |>
-  group_by(year, direction, draw) |>
+  group_by(date_hr, direction, draw) |>
   summarize(across(value,
                    sum),
             .groups = "drop")
+}
 
 # save the MCMC draws as separate objects
-write_rds(yr_draws,
+write_rds(hr_draws,
           file = here("analysis/data/derived_data",
-                      paste0("mcmc_draws_year_",
+                      paste0("mcmc_draws_hour_",
                              str_replace(time_step, " ", "_"),
                              ".rds")))
-rm(yr_draws)
+rm(hr_draws)
 gc()
+
 
 #-----------------------------------------------------------------------
 # summary statistics
