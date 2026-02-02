@@ -55,7 +55,21 @@ mult_obs_df <-
            across(hour,
                   ~ hms(as.character(.))),
            across(hour,
-                  ~ date + .))
+                  ~ date + .)),
+  read_csv(here("analysis/data/raw_data",
+                "2025 shared.csv"),
+           show_col_types = F) |>
+    clean_names() |>
+    select(-date_time) |>
+    mutate(
+      across(
+        hour,
+        ~ case_when(str_detect(., "[:digit:]H") ~ hms(.),
+                    str_detect(., "[:digit:]M") ~ ms(.),
+                    str_detect(., "[:digit:]S") ~ ms("0M 0S"),
+                    .default = NA)),
+      across(hour,
+             ~ date + .))
   ) |>
   mutate(date_time = ymd_hm(paste(year(date),
                                   month(date),
@@ -64,16 +78,28 @@ mult_obs_df <-
                                   minute(hour)))) |>
   relocate(date_time,
            .after = "hour") |>
+  mutate(across(observer,
+                str_to_upper)) |>
   select(-c(hour),
          -c(full_or_partial,
             review_method,
-            time,
+            # time,
             flag,
             data_recorded,
             data_reviewed)) |>
+  mutate(note = time,
+         across(time,
+                ~ case_when(
+                  str_detect(time, "^[:digit:]\\.") ~ difftime(date + seconds(as.numeric(.) * (60*60*24)),
+                                                               date,
+                                                               units = "secs") |>
+                    as.period(),
+                  str_detect(time, "\\:") ~ hms(.),
+                  .default = NA))) |>
   filter(direction %in% c("upstream",
                           "downstream"),
          confidence == 1)
+
 
 # assign a fish ID to each fish we think was being observed by multiple observers
 mult_obs_fish <-

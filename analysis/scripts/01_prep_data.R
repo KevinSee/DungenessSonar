@@ -22,7 +22,8 @@ theme_set(theme_bw())
 # sonar data
 # combine 2 files in 2025 first, and save as a csv
 
-read_csv(here("analysis/data/raw_data",
+all_2025 <-
+  read_csv(here("analysis/data/raw_data",
               "2025 sonar_raw.csv"),
          show_col_types = F) |>
   clean_names() |>
@@ -32,6 +33,12 @@ read_csv(here("analysis/data/raw_data",
   tidyr::fill(c(year:data_recorded),
               .direction = "down") |>
   mutate(across(c(data_reviewed,
+                  observer),
+                ~ case_when(is.na(time) ~ .,
+                            is.na(.) &
+                              !is.na(time) ~ lag(.),
+                            .default = .)),
+         across(c(data_reviewed,
                   observer),
                 ~ case_when(is.na(time) ~ .,
                             is.na(.) &
@@ -76,7 +83,44 @@ read_csv(here("analysis/data/raw_data",
          across(data_reviewed,
                 ~ case_when(data_recorded == "Full" &
                               !is.na(time) ~ "15 min",
-                            .default = .))) |>
+                            .default = .)))
+
+# pull out shared days
+shared_2025 <-
+  all_2025 |>
+  filter(!is.na(observer)) |>
+  mutate(date_time = date + hour) |>
+  group_by(date,
+           date_time) |>
+  summarize(n_obs = n_distinct(observer),
+            obs_inits = paste(unique(observer), collapse = ", "),
+            .groups = "drop") |>
+  filter(n_obs > 1)
+n_distinct(shared_2025$date)
+
+shared_2025 |>
+  select(date_time) |>
+  left_join(all_2025 |>
+              mutate(date_time = date + hour)) |>
+  write_csv(here("analysis/data/raw_data",
+                 "2025 shared.csv"))
+
+# for any shared days, use observer AS
+all_2025 |>
+  mutate(date_time = date + hour) |>
+  anti_join(shared_2025 |>
+              select(date_time)) |>
+  bind_rows(
+    all_2025 |>
+      mutate(date_time = date + hour) |>
+      inner_join(shared_2025 |>
+                   select(date_time)) |>
+      group_by(date_time) |>
+      filter(observer == "as") |>
+      ungroup()
+  ) |>
+  arrange(date_time) |>
+  select(all_of(names(all_2025))) |>
   write_csv(here("analysis/data/raw_data",
                  "2025 sonar.csv"))
 
@@ -797,14 +841,13 @@ quarter_hr_periods |>
 # which hours had the 2nd 30 min reviewed?
 full_hrs <-
   half_hr_periods %>%
+  filter(year < 2025) |>
   filter(data_reviewed %in% c("First 30",
                               "Second 30")) %>%
   group_by(date, hour) %>%
   mutate(n_pers = n(),
          n_first = sum(str_detect(data_reviewed, "First")),
          n_second = sum(str_detect(data_reviewed, "Second"))) %>%
-  # filter(year == 2022) |>
-  # as.data.frame() |> head(10)
   filter(n_pers == 2,
          n_first == 1,
          n_second == 1) %>%
@@ -815,6 +858,24 @@ full_hrs <-
          date,
          hour) |>
   distinct() |>
+  bind_rows(
+    quarter_hr_periods %>%
+      group_by(date, hour) %>%
+      mutate(n_pers = n(),
+             n_first = sum(str_detect(data_reviewed, "First")),
+             n_second = sum(str_detect(data_reviewed, "Second"))) %>%
+      filter(year == 2025,
+             n_pers == 4,
+             n_first == 2,
+             n_second == 2) %>%
+      arrange(date_time) %>%
+      ungroup() %>%
+      select(year,
+             date_time,
+             date,
+             hour) |>
+      distinct()
+  ) |>
   mutate(full_hr = T)
 
 # add column indicating if full hour was reviewed
@@ -921,7 +982,8 @@ half_hr_op <-
             op_perc = op_pers / tot_pers,
             .groups = "drop")
 
-hr_op <- half_hr_periods %>%
+hr_op <-
+  half_hr_periods %>%
   group_by(year,
            date,
            hour,
@@ -933,7 +995,8 @@ hr_op <- half_hr_periods %>%
             op_perc = op_pers / tot_pers,
             .groups = "drop")
 
-hrs_op <- half_hr_periods %>%
+hrs_op <-
+  half_hr_periods %>%
   group_by(year,
            date,
            hr_fct) %>%
@@ -946,7 +1009,8 @@ hrs_op <- half_hr_periods %>%
             .groups = "drop") |>
   select(any_of(names(half_hr_op)))
 
-day_op <- half_hr_periods %>%
+day_op <-
+  half_hr_periods %>%
   group_by(year,
            date) %>%
   summarize(hour = hour[date_time == min(date_time)],

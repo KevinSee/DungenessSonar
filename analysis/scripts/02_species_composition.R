@@ -101,7 +101,8 @@ fl_mod <-
 # extract all steelhead from sonar data: big fish and small ones that are predicted to be steelhead
 sonar_pred_spp <-
   sonar_fish %>%
-  filter(confidence == 1) |>
+  filter(confidence == 1,
+         length < 3000) |>
   rename(fork_length_cm = length) %>%
   mutate(fl_z = (fork_length_cm - unique(spp_fl$fl_mean)) / unique(spp_fl$fl_sd)) %>%
   mutate(jday = yday(date_time)) %>%
@@ -136,22 +137,23 @@ save(fl_mod,
 load(here("analysis/data/derived_data",
           "spp_comp_pred.rda"))
 
-library(tidymv)
+library(tidygam)
 
-plot_smooths(fl_mod,
-             series = fl_z,
-             transform = boot::inv.logit) +
+predict_gam(fl_mod,
+            series = "fl_z",
+            tran_fun = boot::inv.logit) |>
+  plot() +
   labs(x = "Z-Scored Length",
        y = "Probability of Being a Steelhead")
 
-plot_smooths(fl_mod,
-             series = jday,
-             transform = boot::inv.logit) +
+predict_gam(fl_mod,
+            series = "jday",
+            tran_fun = boot::inv.logit) |>
+  plot() +
   labs(x = "Julian Day",
        y = "Probability of Being a Steelhead")
 
-library(tidygam)
-
+# look at both together
 pred_tab <-
   tidygam::predict_gam(fl_mod,
             length_out = 500,

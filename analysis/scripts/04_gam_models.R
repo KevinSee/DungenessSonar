@@ -1,7 +1,7 @@
 # Author: Kevin See
 # Purpose: Fit GAM to time-series with missing data
 # Created: 4/21/23
-# Last Modified: 2/14/25
+# Last Modified: 1/29/26
 # Notes:
 
 #-----------------------------------------------------------------
@@ -14,8 +14,7 @@ library(lubridate)
 library(dataRetrieval)
 library(ggfortify)
 library(mgcv)
-library(tidymv) # to be replaced by tidygam at some point
-# library(tidygam)
+library(tidygam)
 library(colorspace)
 
 theme_set(theme_bw())
@@ -102,20 +101,27 @@ obs_day |>
 # prep data for GAM
 # query discharge data for Dungeness River
 disc_day_df <-
-  dataRetrieval::readNWISdv("12048000",
-                            parameterCd = "00060", # discharge
-                            startDate = as.character(min(ts_half_hr$date_time)),
-                            endDate = as.character(ceiling_date(max(ts_half_hr$date_time), unit = "days")),
-                            statCd = "00003") |>
-  as_tibble() |>
-  dataRetrieval::renameNWISColumns() |>
-  rename(mean_discharge = Flow,
-         date = Date) |>
+  dataRetrieval::read_waterdata_daily(monitoring_location_id = "USGS-12048000",
+                                      parameter_code = "00060", # discharge
+                                      statistic_id = "00003",
+                                      time = range(ts_half_hr$date_time),
+                                      properties = c("monitoring_location_id",
+                                                     "time",
+                                                     "value",
+                                                     "unit_of_measure",
+                                                     "approval_status")) |>
+  # dataRetrieval::readNWISdv("12048000",
+  #                           parameterCd = "00060", # discharge
+  #                           startDate = as.character(min(ts_half_hr$date_time)),
+  #                           endDate = as.character(ceiling_date(max(ts_half_hr$date_time), unit = "days")),
+  #                           statCd = "00003") |>
+  sf::st_drop_geometry() |>
+  rename(date = time,
+         mean_discharge = value) |>
   mutate(across(date,
                 ~ ymd(as.character(.), tz = "UTC")),
          across(date,
-                ~ floor_date(., unit = "days"))) |>
-  select(-Flow_cd)
+                ~ floor_date(., unit = "days")))
 
 # at a finer temporal scale
 disc_all_df <-
@@ -133,7 +139,8 @@ disc_all_df <-
             tz_cd))
 
 # summarize at half hour scales
-disc_hr_df <- disc_all_df |>
+disc_hr_df <-
+  disc_all_df |>
   mutate(date_hr = floor_date(date_time, unit = "hours"),
          time_period = if_else(str_detect(date_time, ":30:") |
                                  str_detect(date_time, ":45:"),
@@ -205,7 +212,8 @@ down_data <-
 
 
 # add discharge data
-up_data %<>%
+up_data <-
+  up_data |>
   left_join(disc_hr_df |>
               select(date_time,
                      mean_discharge)) |>
@@ -217,7 +225,8 @@ up_data %<>%
                             .default = .))) |>
   select(-daily_discharge)
 
-down_data %<>%
+down_data <-
+  down_data |>
   left_join(disc_hr_df |>
               select(date_time,
                      mean_discharge)) |>
@@ -330,9 +339,9 @@ plot(down_mod)
 
 # save a bunch of objects
 time_step <-
-  if_else(sum(str_detect(up_data$date_time[12], ":30:")) > 0,
-          "30 min",
-          "1 hour")
+  case_when(sum(str_detect(up_data$date_time[12], ":15:")) > 0 ~ "15 min",
+            sum(str_detect(up_data$date_time[12], ":30:")) > 0 ~ "30 min",
+            .default = "1 hour")
 
 save(ts_half_hr,
      up_data,
@@ -350,10 +359,21 @@ save(ts_half_hr,
 text_size = 16
 
 up_hr_p <-
-  plot_smooths(up_mod,
-               series = hour_of_day,
-               conditions = quos(prop_hr_sampled == 1),
-               transform = exp) +
+  predict_gam(up_mod,
+              length_out = 47,
+              series = "hour_of_day",
+              exclude_terms = c("mean_discharge",
+                                "day_of_year"),
+              values = list(prop_hr_sampled = 1,
+                            year = levels(up_data$year)[round(nlevels(up_data$year) / 2)]),
+              tran_fun = exp) |>
+  ggplot(aes(x = hour_of_day,
+             y = total_observed_hr)) +
+  geom_ribbon(aes(ymin = lower_ci,
+                  ymax = upper_ci),
+              fill = "gray90",
+              color = "gray90") +
+  geom_line() +
   labs(x = "Hour of Day",
        y = "Expected Number Upstream\nFish / 30 min") +
   theme(plot.background = element_rect(fill='transparent', color=NA),
@@ -361,16 +381,21 @@ up_hr_p <-
         text = element_text(size = text_size))
 
 up_disch_p <-
-  plot_smooths(up_mod,
-               series = mean_discharge,
-               # comparison = year,
-               conditions = quos(prop_hr_sampled == 1),
-               transform = exp) +
-  scale_y_continuous(limits = c(NA, 0.45)) +
-  # scale_x_continuous(limits = c(NA, max(up_data$mean_discharge, na.rm = T))) +
-  scale_x_continuous(limits = c(NA, quantile(up_data$mean_discharge, 0.995, na.rm = T))) +
-  geom_rug(data = up_data,
-           aes(x = mean_discharge)) +
+  predict_gam(up_mod,
+              length_out = 99,
+              series = "mean_discharge",
+              exclude_terms = c("hour_of_day",
+                                "day_of_year"),
+              values = list(prop_hr_sampled = 1,
+                            year = levels(up_data$year)[round(nlevels(up_data$year) / 2)]),
+              tran_fun = exp) |>
+  ggplot(aes(x = mean_discharge,
+             y = total_observed_hr)) +
+  geom_ribbon(aes(ymin = lower_ci,
+                  ymax = upper_ci),
+              fill = "gray90",
+              color = "gray90") +
+  geom_line() +
   labs(x = "Discharge",
        y = "Expected Number Upstream\nFish / 30 min") +
   theme(plot.background = element_rect(fill='transparent', color=NA),
@@ -378,37 +403,25 @@ up_disch_p <-
         text = element_text(size = text_size))
 
 up_doy_p <-
-  get_gam_predictions(up_mod,
-                      series = day_of_year,
-                      series_length = 151,
-                      conditions = quos(prop_hr_sampled == 1),
-                      exclude_random = F,
-                      exclude_terms = s(mean_discharge)) |>
-  as_tibble() |>
-  mutate(across(day_of_year,
-                as.integer),
-         date = ymd(20201231) + days(day_of_year)) |>
-  mutate(across(c(total_observed_hr,
-                  starts_with("CI")),
-                exp),
-         across(c(total_observed_hr,
-                  starts_with("CI")),
-                ~ . * 2 * 24)) |>
-         # across(c(total_observed_hr,
-         #          starts_with("CI")),
-         #        ~ . * 24)) |>
-  filter(month(date) < 6) |>
-  ggplot(aes(x = date,
+  predict_gam(up_mod,
+              length_out = 99,
+              series = "day_of_year",
+              exclude_terms = c("hour_of_day",
+                                "mean_discharge"),
+              values = list(prop_hr_sampled = 1,
+                            day_of_year = seq(min(up_data$day_of_year),
+                                              max(up_data$day_of_year))),
+              tran_fun = exp) |>
+  mutate(plot_date = ymd(20201231) + days(day_of_year)) |>
+  ggplot(aes(x = plot_date,
              y = total_observed_hr,
              color = year,
              fill = year)) +
-  geom_ribbon(aes(ymin = CI_lower,
-                  ymax = CI_upper),
+  geom_ribbon(aes(ymin = lower_ci,
+                  ymax = upper_ci),
               color = NA,
               alpha = 0.2) +
   geom_line() +
-  # scale_y_continuous(limits = c(NA, 35)) +
-  scale_y_continuous(limits = c(NA, 70)) +
   labs(x = "Date",
        y = "Expected Number Upstream\nFish / Day",
        color = "Year",
@@ -417,11 +430,16 @@ up_doy_p <-
         legend.box.background = element_rect(fill='transparent'),
         text = element_text(size = text_size))
 
-ggpubr::ggarrange(up_hr_p,
-                  up_disch_p,
-                  up_doy_p +
-                    theme(legend.position = "bottom"),
-                  nrow = 1)
+
+ggpubr::ggarrange(
+  ggpubr::ggarrange(up_hr_p,
+                    up_disch_p,
+                    nrow = 1),
+  up_doy_p +
+    theme(legend.position = "right"),
+  nrow = 2,
+  ncol = 1)
+
 
 ggsave(here("analysis/figures",
             "gam_up_marginal.png"),
@@ -430,110 +448,100 @@ ggsave(here("analysis/figures",
        bg='transparent')
 
 
-
-
 down_hr_p <-
-  plot_smooths(down_mod,
-               series = hour_of_day,
-               conditions = quos(prop_hr_sampled == 1),
-               transform = exp) +
-  # scale_y_continuous(limits = c(0, 0.65)) +
+  predict_gam(down_mod,
+              length_out = 47,
+              series = "hour_of_day",
+              exclude_terms = c("mean_discharge",
+                                "day_of_year"),
+              values = list(prop_hr_sampled = 1,
+                            year = levels(down_data$year)[round(nlevels(down_data$year) / 2)]),
+              tran_fun = exp) |>
+  ggplot(aes(x = hour_of_day,
+             y = total_observed_hr)) +
+  geom_ribbon(aes(ymin = lower_ci,
+                  ymax = upper_ci),
+              fill = "gray90",
+              color = "gray90") +
+  geom_line() +
   labs(x = "Hour of Day",
        y = "Expected Number Downstream\nFish / 30 min") +
   theme(plot.background = element_rect(fill='transparent', color=NA),
         legend.box.background = element_rect(fill='transparent'),
         text = element_text(size = text_size))
 
-
 down_disch_p <-
-  plot_smooths(down_mod,
-               series = mean_discharge,
-               # comparison = year,
-               conditions = quos(prop_hr_sampled == 1),
-               transform = exp) +
-  scale_y_continuous(limits = c(NA, 0.45)) +
-  # scale_x_continuous(limits = c(NA, max(down_data$mean_discharge, na.rm = T))) +
-  scale_x_continuous(limits = c(NA, quantile(down_data$mean_discharge, 0.995, na.rm = T))) +
-
+  predict_gam(down_mod,
+              length_out = 99,
+              series = "mean_discharge",
+              exclude_terms = c("hour_of_day",
+                                "day_of_year"),
+              values = list(prop_hr_sampled = 1,
+                            year = levels(down_data$year)[round(nlevels(down_data$year) / 2)]),
+              tran_fun = exp) |>
+  ggplot(aes(x = mean_discharge,
+             y = total_observed_hr)) +
+  geom_ribbon(aes(ymin = lower_ci,
+                  ymax = upper_ci),
+              fill = "gray90",
+              color = "gray90") +
+  geom_line() +
   labs(x = "Discharge",
        y = "Expected Number Downstream\nFish / 30 min") +
   theme(plot.background = element_rect(fill='transparent', color=NA),
         legend.box.background = element_rect(fill='transparent'),
         text = element_text(size = text_size))
 
-ggpubr::ggarrange(up_disch_p,
-                  down_disch_p,
-                  nrow = 1)
-
-ggpubr::ggarrange(up_hr_p,
-                  up_disch_p,
-                  nrow = 1)
-
-ggsave(here("analysis/figures",
-            "gam_hr_discharge_up.png"),
-       width = 12,
-       height = 6,
-       bg='transparent')
-
-ggpubr::ggarrange(down_hr_p,
-                  down_disch_p,
-                  nrow = 1)
-
-ggsave(here("analysis/figures",
-            "gam_hr_discharge_down.png"),
-       width = 12,
-       height = 6,
-       bg='transparent')
-
-
-down_doy_p <- get_gam_predictions(down_mod,
-                                  series = day_of_year,
-                                  series_length = 151,
-                                  conditions = quos(prop_hr_sampled == 1),
-                                  exclude_random = F,
-                                  exclude_terms = s(mean_discharge)) |>
-  as_tibble() |>
-  mutate(across(day_of_year,
-                as.integer),
-         date = ymd(20201231) + days(day_of_year)) |>
-  mutate(across(c(total_observed_hr,
-                  starts_with("CI")),
-                exp),
-         across(c(total_observed_hr,
-                  starts_with("CI")),
-                ~ . * 2 * 24)) |>
-  filter(month(date) < 6) |>
-  ggplot(aes(x = date,
+down_doy_p <-
+  predict_gam(down_mod,
+              length_out = 99,
+              series = "day_of_year",
+              exclude_terms = c("hour_of_day",
+                                "mean_discharge"),
+              values = list(prop_hr_sampled = 1,
+                            day_of_year = seq(min(down_data$day_of_year),
+                                              max(down_data$day_of_year))),
+              tran_fun = exp) |>
+  mutate(plot_date = ymd(20201231) + days(day_of_year)) |>
+  ggplot(aes(x = plot_date,
              y = total_observed_hr,
              color = year,
              fill = year)) +
-  geom_ribbon(aes(ymin = CI_lower,
-                  ymax = CI_upper),
+  geom_ribbon(aes(ymin = lower_ci,
+                  ymax = upper_ci),
               color = NA,
               alpha = 0.2) +
   geom_line() +
-  # scale_y_continuous(limits = c(NA, 35)) +
-  scale_y_continuous(limits = c(NA, 70)) +
   labs(x = "Date",
        y = "Expected Number Downstream\nFish / Day",
        color = "Year",
        fill = "Year") +
+  scale_y_continuous(limits = c(NA, 2.5)) +
   theme(plot.background = element_rect(fill='transparent', color=NA),
         legend.box.background = element_rect(fill='transparent'),
         text = element_text(size = text_size))
 
-ggpubr::ggarrange(up_doy_p,
-                  down_doy_p,
-                  nrow = 1,
-                  common.legend = T,
-                  legend = "bottom")
+
+# ggpubr::ggarrange(down_hr_p,
+#                   down_disch_p,
+#                   down_doy_p +
+#                     theme(legend.position = "bottom"),
+#                   nrow = 1)
+
+ggpubr::ggarrange(
+  ggpubr::ggarrange(down_hr_p,
+                    down_disch_p,
+                    nrow = 1),
+  down_doy_p +
+    theme(legend.position = "right"),
+  nrow = 2,
+  ncol = 1)
 
 ggsave(here("analysis/figures",
-            "gam_doy.png"),
-       width = 12,
-       height = 6,
+            "gam_down_marginal.png"),
+       width = 16,
+       height = 7,
        bg='transparent')
-
 
 
 # clean up some objects
@@ -543,6 +551,7 @@ rm(down_disch_p,
    up_disch_p,
    up_doy_p,
    up_hr_p)
+gc()
 
 #----------------------------------------------
 # prediction
@@ -554,7 +563,7 @@ newdata <-
   mutate(date_time =
            map(year,
                .f = function(yr) {
-                 tibble(date_time = seq(ymd_hms(paste0(yr, "0101 00:00:00"), tz = tz(up_data$date_time)),
+                 tibble(date_time = seq(ymd_hms(paste0(yr, "0115 00:00:00"), tz = tz(up_data$date_time)),
                                         ymd_hms(paste0(yr, "0615 00:00:00"), tz = tz(up_data$date_time)),
                                         by = time_step))
                })) |>
@@ -581,7 +590,8 @@ newdata <-
 
 # for half hour predictions
 if(sum(str_detect(newdata$date_time[1:10], ":30:")) > 0){
-  newdata %<>%
+  newdata <-
+    newdata |>
     mutate(across(hour_of_day,
                   ~ if_else(str_detect(date_time, ":30:"),
                             . + 0.5,
@@ -598,6 +608,8 @@ pred_up <-
   rename(pred = fit,
          se = se.fit) |>
   add_column(direction = "up",
+             .before = 0) |>
+  add_column(date_time = newdata$date_time,
              .before = 0)
 
 pred_down <-
@@ -610,13 +622,17 @@ pred_down <-
   rename(pred = fit,
          se = se.fit) |>
   add_column(direction = "down",
+             .before = 0) |>
+  add_column(date_time = newdata$date_time,
              .before = 0)
 
 pred_all <-
   newdata |>
-  bind_cols(pred_up) |>
+  left_join(pred_up,
+            by = join_by(date_time)) |>
   bind_rows(newdata |>
-              bind_cols(pred_down)) |>
+              left_join(pred_down,
+                        by = join_by(date_time))) |>
   relocate(direction,
            .after = "year") |>
   arrange(date_time,
@@ -713,7 +729,7 @@ rm(disc_all_df,
    ts_df,
    obs_day,
    obs_hr,
-   mod_df,
+   mod_half_df,
    my_thres,
    text_size)
 
@@ -856,7 +872,9 @@ hr_draws <-
   all_draws |>
   # mutate(across(value,
   #               round_half_up)) |>
-  group_by(date_hr, direction, draw) |>
+  group_by(date_hr,
+           direction,
+           draw) |>
   summarize(across(value,
                    sum),
             .groups = "drop")
@@ -1825,3 +1843,136 @@ daily_est |>
   summarize(across(c(mean, `50%`),
                    sum),
             .groups = "drop")
+
+
+
+#----------------------------------------------
+# Annual estimates
+#----------------------------------------------
+
+# time_step = c("30 min",
+#               "1 hour")[1]
+
+# what date should we stop subtracting downstream fish?
+down_date <- "May 15"
+
+day_draws <-
+  read_rds(here("analysis/data/derived_data",
+                paste0("mcmc_draws_day_",
+                       str_replace(time_step, " ", "_"),
+                       ".rds"))) |>
+  pivot_wider(names_from = direction,
+              values_from = value) |>
+  mutate(net = up - down) |>
+  pivot_longer(cols = c(down,
+                        up,
+                        net),
+               names_to = "direction",
+               values_to = "value") |>
+  mutate(across(direction,
+                ~ factor(.,
+                         levels = c("up", "down", "net")))) |>
+  mutate(year = year(date)) |>
+  relocate(year, .before = 0)
+
+yr_draws_net <-
+  day_draws |>
+  filter(direction == "net",
+         date < ymd(paste(year, down_date))) |>
+  group_by(year,
+           draw,
+           direction) |>
+  summarize(across(value,
+                   sum),
+            .groups = "drop")
+
+yr_draws_up <-
+  day_draws |>
+  filter(direction == "up",
+         date >= ymd(paste(year, down_date))) |>
+  group_by(year,
+           draw,
+           direction) |>
+  summarize(across(value,
+                   sum),
+            .groups = "drop")
+
+yr_draws_kelts <-
+  day_draws |>
+  filter(direction == "down",
+         date >= ymd(paste(year, down_date))) |>
+  group_by(year,
+           draw,
+           direction) |>
+  summarize(across(value,
+                   sum),
+            .groups = "drop") |>
+  rename(kelts = value)
+
+yr_draws <-
+  yr_draws_net |>
+  bind_rows(yr_draws_up) |>
+  pivot_wider(names_from = direction,
+              values_from = value) |>
+  # mutate(across(net,
+  #               ~ case_when(. < 0 ~ 0,
+  #                           .default = .))) |>
+  mutate(total = net + up)
+
+# summary statistics
+yr_est <-
+  yr_draws |>
+  pivot_longer(c(net, up, total),
+               names_to = "group",
+               values_to = "value") |>
+  group_by(year,
+           group) |>
+  summarize(
+    across(
+      value,
+      list(mean = ~ mean(.),
+           median = ~ median(.),
+           se = ~ sd(.)),
+      .names = "{.fn}"),
+    .groups = "drop") |>
+  left_join(yr_draws |>
+              pivot_longer(c(net, up, total),
+                           names_to = "group",
+                           values_to = "value") |>
+              group_by(year,
+                       group) |>
+              reframe(across(value,
+                             ~ quantile(., c(0.025, 0.975)))) %>%
+              add_column(quantile = rep(c("2.5%", "97.5%"), nrow(.) / 2)) |>
+              pivot_wider(names_from = quantile,
+                          values_from = value),
+            by = join_by(year, group)) |>
+  mutate(across(group,
+                ~ case_match(.,
+                             "net" ~ "early",
+                             "up" ~ "late",
+                             .default = .)),
+         across(group,
+                ~ factor(.,
+                         levels = c("early",
+                                    "late",
+                                    "total")))) |>
+  arrange(year, group)
+
+yr_est |>
+  select(year,
+         time_period = group,
+         # estimate = median,
+         estimate = mean,
+         se,
+         ends_with("%")) |>
+  mutate(across(c(estimate,
+                  ends_with("%")),
+                round_half_up),
+         across(`2.5%`,
+                ~ case_when(. < 0 ~ 0,
+                            .default = .)),
+         across(se,
+                ~ round_half_up(., 1))) |>
+  write_csv(here("analysis/outgoing",
+                 "estimates_all_yrs.csv"))
